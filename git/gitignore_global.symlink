@@ -1,0 +1,28 @@
+# OS generated files
+.DS_Store
+.DS_Store?
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.*
+!.env.example
+.localrc
+
+# Compiled files
+*.pyc
+__pycache__/
+
+# Scratchpad / temporary notes
+scratchpad/
+
+# Editor backups
+*.swp
+*.swo
+*~

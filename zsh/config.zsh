@@ -1,0 +1,5 @@
+setopt AUTO_CD
+setopt CORRECT
+setopt HIST_IGNORE_DUPS
+setopt SHARE_HISTORY
+setopt EXTENDED_HISTORY

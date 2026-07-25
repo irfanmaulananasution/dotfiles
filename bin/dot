@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+#
+# dot - keep your dotfiles fresh
+# Usage: dot bootstrap   -> re-symlink dotfiles
+#        dot install     -> run topic installers
+#        dot update      -> brew update && brew upgrade
+#        dot macos       -> re-apply macOS defaults
+
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+DOTFILES_ROOT=$(pwd -P)
+
+case "${1:-}" in
+  bootstrap)
+    bash "$DOTFILES_ROOT/script/bootstrap"
+    ;;
+  install)
+    bash "$DOTFILES_ROOT/install.sh"
+    ;;
+  update)
+    brew update
+    brew upgrade
+    brew cleanup
+    ;;
+  macos)
+    bash "$DOTFILES_ROOT/mac/install.sh"
+    ;;
+  *)
+    echo "Usage: dot <command>"
+    echo ""
+    echo "  bootstrap   Re-symlink all dotfiles"
+    echo "  install     Run full install (after clone)"
+    echo "  update      Update Homebrew packages"
+    echo "  macos       Re-apply macOS defaults"
+    ;;
+esac

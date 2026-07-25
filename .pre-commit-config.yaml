@@ -1,0 +1,15 @@
+# Pre-commit hooks for the dotfiles repo.
+# Install once (after cloning):  brew install pre-commit && pre-commit install
+# Runs gitleaks on every commit to block secrets (API keys, tokens, private
+# keys) from entering git history. Directly addresses the V1 audit's CRITICAL
+# finding (plaintext keys surfaced in a review session) by catching them at
+# the staging boundary instead.
+
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+        # Scan the full staged diff; fail the commit if any secret pattern matches.
+        # `.local/` and `.env*` are already gitignored, so this is defense-in-depth
+        # for accidental `git add -f` or new patterns we haven't listed.

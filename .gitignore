@@ -1,0 +1,18 @@
+# Secrets & local machine state (never commit)
+.local/
+
+# Environment files
+.env
+.env.local
+.localrc
+
+# iTerm2 plist (contains potential secrets)
+iterm2/*.plist
+
+# macOS
+.DS_Store
+
+# Editor swap files
+*.swp
+*.swo
+*~

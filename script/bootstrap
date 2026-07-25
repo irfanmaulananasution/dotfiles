@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+#
+# bootstrap - symlinks all .symlink files in topic dirs to $HOME
+# Inspired by https://github.com/holman/dotfiles
+
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+DOTFILES_ROOT=$(pwd -P)
+
+info () {
+  printf "\r  [ \033[00;34m..\033[0m ] %s\n" "$1"
+}
+
+success () {
+  printf "\r\033[2K  [ \033[00;32mOK\033[0m ] %s\n" "$1"
+}
+
+user () {
+  printf "\r  [ \033[0;33m??\033[0m ] %s\n" "$1"
+}
+
+fail () {
+  printf "\r\033[2K  [\033[0;31mFAIL\033[0m] %s\n" "$1"
+  echo ''
+  exit 1
+}
+
+link_file () {
+  local src=$1 dst=$2
+  local overwrite_all=${overwrite_all:-false}
+  local backup_all=${backup_all:-false}
+  local skip_all=${skip_all:-false}
+  mkdir -p "$DOTFILES_ROOT/.local"
+  local local_copy="$DOTFILES_ROOT/.local/$(basename "${src%.*}")"
+
+  if [ -f "$dst" ] || [ -d "$dst" ] || [ -L "$dst" ]; then
+    if [ "$overwrite_all" == "false" ] && [ "$backup_all" == "false" ] && [ "$skip_all" == "false" ]; then
+      local currentSrc
+      currentSrc="$(readlink "$dst")" || true
+      if [ "$currentSrc" == "$local_copy" ]; then
+        success "already linked $dst"
+        return
+      fi
+
+      user "File already exists: $dst, what do you want to do? [s]kip, [S]kip all, [o]verwrite, [O]verwrite all, [b]ackup, [B]ackup all?"
+      read -r -n 1 action < /dev/tty
+      case "$action" in
+        o ) overwrite=true ;;
+        O ) overwrite_all=true ;;
+        b ) backup=true ;;
+        B ) backup_all=true ;;
+        s ) skip=true ;;
+        S ) skip_all=true ;;
+        * ) ;;
+      esac
+    fi
+
+    if [ "${overwrite:-$overwrite_all}" == "true" ]; then
+      rm -rf "$dst"
+      success "removed $dst"
+    fi
+    if [ "${backup:-$backup_all}" == "true" ]; then
+      mv "$dst" "${dst}.backup"
+      success "backed up $dst to ${dst}.backup"
+    fi
+    if [ "${skip:-$skip_all}" == "true" ]; then
+      success "skipped $src"
+      return
+    fi
+  fi
+
+  cp "$src" "$local_copy"
+  ln -s "$local_copy" "$dst"
+  success "linked $local_copy to $dst"
+}
+
+info "symlinking dotfiles"
+
+while IFS= read -r -d '' src; do
+  dst="$HOME/.$(basename "${src%.*}")"
+  link_file "$src" "$dst"
+done < <(find -H "$DOTFILES_ROOT" -maxdepth 3 -name '*.symlink' -not -path '*.git*' -print0)
+
+# Special case: link .zshrc via .local/ (same pattern as .symlink files)
+mkdir -p "$DOTFILES_ROOT/.local"
+local_zshrc="$DOTFILES_ROOT/.local/.zshrc"
+if [ ! -L "$HOME/.zshrc" ] || [ "$(readlink "$HOME/.zshrc")" != "$local_zshrc" ]; then
+  cp "$DOTFILES_ROOT/.zshrc" "$local_zshrc"
+  ln -sf "$local_zshrc" "$HOME/.zshrc"
+  success "linked .zshrc"
+fi
+
+# Special case: link ~/.env → .local/.env.local
+local_env="$DOTFILES_ROOT/.local/.env.local"
+if [ ! -L "$HOME/.env" ] || [ "$(readlink "$HOME/.env")" != "$local_env" ]; then
+  if [ -f "$DOTFILES_ROOT/.env.example" ] && [ ! -f "$local_env" ]; then
+    cp "$DOTFILES_ROOT/.env.example" "$local_env"
+    info "created $local_env — edit it to set your secrets"
+  fi
+  if [ -f "$local_env" ]; then
+    ln -sf "$local_env" "$HOME/.env"
+    success "linked .env"
+  fi
+fi
+
+success "all dotfiles linked"

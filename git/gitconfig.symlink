@@ -1,0 +1,11 @@
+[color]
+  ui = auto
+[core]
+  excludesfile = ~/.gitignore_global
+[init]
+  defaultBranch = main
+[push]
+  default = current
+[pull]
+  rebase = true
+# Identity is appended by git/install.sh into .local/gitconfig — do not edit here.
