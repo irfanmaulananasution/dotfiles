@@ -455,6 +455,80 @@ reference, then pruning anything subjective or risky. References cited inline.
   `formatOnSave` beyond json/jsonc, or theme overrides — all are
   project-specific and don't belong in shared user settings.
 
+## Design Decisions — V5 cruft pass (de-dup this-laptop leftovers)
+
+After the V4 refactor landed best practices, a further pass removed
+laptop-specific cruft: dead aliases, redundant extensions installed twice,
+legacy software flags, and project-specific tools masquerading as defaults.
+
+### VS Code extensions: 9 dropped, 13 kept
+- **Decision:** the previous `vscode/install.sh:21-45` list installed 22
+  extensions. Trimmed to 13 by removing 9 in three categories.
+- **Redundant (installed by the `vscjava.vscode-java-pack` meta-extension
+  anyway):** `redhat.java`, `vscjava.vscode-java-debug`,
+  `vscjava.vscode-java-maven`, `vscjava.vscode-gradle`. The Java pack
+  bundles these — listing them separately caused `code --install-extension`
+  to write a "already installed" error on every run. (Also aligns with the
+  "no global Gradle" decision from V4.) Dropped 4.
+- **Duplicate icon themes:** both `PKief.material-icon-theme` and
+  `vscode-icons-team.vscode-icons` were installed — only one can be
+  active at a time. Kept Material Icons (more modern, broader file-type
+  coverage). Dropped 1.
+- **Project-specific (should be per-project):**
+  - `bradlc.vscode-tailwindcss` — only relevant to Tailwind projects.
+  - `golang.go` — only relevant to Go projects.
+  - `ms-toolsai.jupyter` — notebook workflow; auto-pulls Python deps.
+  - `ritwickdey.LiveServer` — HTML static dev server; only relevant to
+    HTML/CSS projects.
+  These belong in a project's `.vscode/extensions.json` recommendations,
+  masquerading as universal defaults in a dotfiles repo. Dropped 4.
+- **Kept (universal or already-paid-for):** EditorConfig, GitLens,
+  Prettier, ESLint, Copilot + Copilot-Chat (user has subscription),
+  Markdown Preview GitHub Styles, auto-rename-tag, Material Icons,
+  Python + Pylance, remote-ssh, the Java Pack (one bundle, not five),
+  vim bindings.
+
+### `zsh/aliases.zsh` — `alias ~="cd ~"` removed
+- **Decision:** dropped the `~` alias.
+- **Why:** `~` is expanded by zsh's filename-expansion phase *before*
+  alias resolution fires, so the alias never actually triggered. More
+  importantly, `zsh/config.zsh` already sets `setopt AUTO_CD`, which makes
+  typing `~` + Enter cd into `$HOME` directly with no alias needed. The
+  line was dead and redundant.
+
+### `node/aliases.zsh` — yarn aliases removed
+- **Decision:** dropped 6 yarn aliases (`y`, `ya`, `yad`, `yr`, `yb`,
+  `yd`). Kept all 9 npm aliases.
+- **Why:** yarn is not in the Brewfile, so the dotfiles don't install it.
+  Yarn 1.x is in maintenance mode only; modern projects either stay on npm
+  or move to pnpm. Keeping yarn-only aliases in a fresh-Mac install
+  creates aliases for a binary that isn't there. Re-add by hand if you
+  actually install yarn.
+
+### `iterm2/com.googlecode.iterm2.plist.template` — `BM Growl` key removed
+- **Decision:** dropped the `BM Growl` (Boolean true) entry from the
+  iTerm2 plist template.
+- **Why:** Growl was a third-party macOS notification system popular from
+  ~2008-2014; it was deprecated in 2014 and removed from the Mac App
+  Store in 2017. Modern macOS uses the native Notification Center, which
+  iTerm2 supports without the `BM Growl` toggle. The flag was inert
+  cruft from an earlier iTerm2 generation.
+
+### `mac/defaults.symlink` — already clean
+- Verified the V4 rewrite contains no this-laptop specifics: no hardcoded
+  timezone, no custom hostname, no `sudo nvram`, no Spotlight rebuild,
+  no `LSQuarantine=false`, no disk-image-verification bypass, no
+  sleepimage surgery. Everything is user-defaults only. Nothing to clean
+  up here.
+
+### `Brewfile` — intentionally not edited
+- The cask list (`obsidian`, `anki`, `the-unarchiver`, `dbeaver-community`,
+  `rancher`) is personal preference, not redundancy. None of these are
+  dead software or installed-twice. Removing any of them would be
+  imposing a different opinion about apps the user actually uses, not
+  "cleaning cruft." Left untouched; revisit per-app if you want to slim
+  the fresh-Mac install.
+
 ## Resources
 
 - [Getting Started with Dotfiles](https://driesvints.com/blog/getting-started-with-dotfiles/)
