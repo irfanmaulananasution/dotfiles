@@ -1,70 +1,154 @@
-# .macos — macOS defaults
-# Inspired by https://github.com/mathiasbynens/dotfiles
+# .macos — macOS defaults (mathiasbynens-style, but scoped to safe + coder-friendly)
+# Inspired by https://github.com/mathiasbynens/dotfiles/blob/master/.macos
+#
+# Rules of inclusion here:
+#   - User-defaults only (no `sudo nvram`, no `systemsetup`, no Spotlight
+#     rebuild) so a non-admin user can run most of this.
+#   - No downgrades of security features (no LSQuarantine disable, no
+#     disk-image-verification bypass, no Secure Keyboard Entry off).
+#   - Idempotent — re-running is a no-op on already-set values.
 
-# Close any open System Preferences panes
-osascript -e 'tell application "System Preferences" to quit'
+# Close any open System Preferences panes (they'd override our writes).
+osascript -e 'tell application "System Preferences" to quit' 2>/dev/null
 
-# Ask for sudo upfront
+# Ask for sudo up front and keep it alive for the few items below that need it
+# (sudo chmod on ~/Library, /Volumes).
 sudo -v
-
-# Keep alive during script
 while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 
-# ---------- General ----------
-# Disable auto-correct
+# ---------- General UI/UX ----------
+# Disable auto-correct / smart quotes / smart dashes / caps / period — annoying
+# when writing code, common in every coder-dotfile.
 defaults write NSGlobalDomain NSAutomaticSpellingCorrectionEnabled -bool false
-# Disable smart quotes
 defaults write NSGlobalDomain NSAutomaticQuoteSubstitutionEnabled -bool false
-# Disable smart dashes
-defaults write NSGlobalDomain NSAutomaticDashSubstitutionEnabled -bool false
-# Expand save panel by default
-defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true
-# Expand print panel by default
-defaults write NSGlobalDomain PMPrintingExpandedStateForPrint -bool true
+defaults write NSGlobalDomain NSAutomaticDashSubstitutionEnabled  -bool false
+defaults write NSGlobalDomain NSAutomaticCapitalizationEnabled    -bool false
+defaults write NSGlobalDomain NSAutomaticPeriodSubstitutionEnabled -bool false
+
+# Always show scrollbars.
+defaults write NSGlobalDomain AppleShowScrollBars -string "Always"
+
+# Disable the over-the-top focus-ring animation.
+defaults write NSGlobalDomain NSUseAnimatedFocusRing -bool false
+
+# Speed up window resize in Cocoa apps.
+defaults write NSGlobalDomain NSWindowResizeTime -float 0.001
+
+# Expand save and print panels by default.
+defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode  -bool true
+defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode2 -bool true
+defaults write NSGlobalDomain PMPrintingExpandedStateForPrint  -bool true
+defaults write NSGlobalDomain PMPrintingExpandedStateForPrint2 -bool true
+
+# Save to disk (not iCloud) by default.
+defaults write NSGlobalDomain NSDocumentSaveNewDocumentsToCloud -bool false
+
+# Auto-quit the printer app once print jobs finish.
+defaults write com.apple.print.PrintingPrefs "Quit When Finished" -bool true
+
+# Disable Resume so apps don't restore their previous windows.
+defaults write com.apple.systempreferences NSQuitAlwaysKeepsWindows -bool false
+
+# ---------- Keyboard ----------
+# Fast key repeat (good for editors); disable press-and-hold accents.
+defaults write NSGlobalDomain ApplePressAndHoldEnabled -bool false
+defaults write NSGlobalDomain KeyRepeat -int 1
+defaults write NSGlobalDomain InitialKeyRepeat -int 10
+
+# Full keyboard access: Tab moves between all controls, not just lists.
+defaults write NSGlobalDomain AppleKeyboardUIMode -int 3
 
 # ---------- Trackpad ----------
-# Enable tap to click
+# Tap to click.
 defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true
 defaults -currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
+defaults write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
 
 # ---------- Finder ----------
-# Show hidden files
+# Show hidden files and all extensions.
 defaults write com.apple.finder AppleShowAllFiles -bool true
-# Show all filename extensions
 defaults write NSGlobalDomain AppleShowAllExtensions -bool true
-# Show path bar
+
+# Show path bar and status bar; keep folders first when sorting by name.
 defaults write com.apple.finder ShowPathbar -bool true
-# Show status bar
 defaults write com.apple.finder ShowStatusBar -bool true
-# Keep folders on top when sorting by name
 defaults write com.apple.finder _FXSortFoldersFirst -bool true
-# Search current folder by default
+
+# Search the current folder by default.
 defaults write com.apple.finder FXDefaultSearchScope -string "SCcf"
-# Avoid .DS_Store on network volumes
-defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
-# Use list view by default
+
+# Use list view by default.
 defaults write com.apple.finder FXPreferredViewStyle -string "Nlsv"
 
+# Allow quitting Finder via ⌘Q (hides desktop icons).
+defaults write com.apple.finder QuitMenuItem -bool true
+
+# Disable the "Are you sure" warning when changing a file extension.
+defaults write com.apple.finder FXEnableExtensionChangeWarning -bool false
+
+# Disable window and Get Info animations.
+defaults write com.apple.finder DisableAllAnimations -bool true
+
+# Don't write .DS_Store on network or USB volumes.
+defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
+defaults write com.apple.desktopservices DSDontWriteUSBStores -bool true
+
+# Show the ~/Library and /Volumes folders.
+chflags nohidden ~/Library 2>/dev/null
+sudo chflags nohidden /Volumes 2>/dev/null
+
 # ---------- Dock ----------
-# Set icon size
+# Sane defaults: small icons, scale effect, minimize-into-app-icon, no recents.
 defaults write com.apple.dock tilesize -int 48
-# Auto-hide dock
+defaults write com.apple.dock mineffect -string "scale"
+defaults write com.apple.dock minimize-to-application -bool true
+defaults write com.apple.dock show-process-indicators -bool true
+defaults write com.apple.dock show-recents -bool false
+defaults write com.apple.dock launchanim -bool false
+
+# Auto-hide the Dock; remove the auto-hide delay and animation.
 defaults write com.apple.dock autohide -bool true
-# Remove auto-hide delay
 defaults write com.apple.dock autohide-delay -float 0
-# Show only active apps
-defaults write com.apple.dock static-only -bool false
-# Hot corners: bottom-left = desktop
+defaults write com.apple.dock autohide-time-modifier -float 0
+
+# Speed up Mission Control.
+defaults write com.apple.dock expose-animation-duration -float 0.1
+
+# Don't auto-rearrange Spaces by recent use (matters for multi-monitor).
+defaults write com.apple.dock mru-spaces -bool false
+
+# Hot corners: bottom-left = Desktop, top-right = Mission Control.
 defaults write com.apple.dock wvous-bl-corner -int 4
 defaults write com.apple.dock wvous-bl-modifier -int 0
+defaults write com.apple.dock wvous-tr-corner -int 2
+defaults write com.apple.dock wvous-tr-modifier -int 0
 
-# ---------- Screenshots ----------
-# Save screenshots to ~/Desktop
+# ---------- Screen ----------
+# Require password immediately after sleep or screen saver starts.
+defaults write com.apple.screensaver askForPassword -int 1
+defaults write com.apple.screensaver askForPasswordDelay -int 0
+
+# Screenshots: PNG to ~/Desktop with no drop-shadow.
 defaults write com.apple.screencapture location -string "$HOME/Desktop"
-# Disable shadow
+defaults write com.apple.screencapture type -string "png"
 defaults write com.apple.screencapture disable-shadow -bool true
 
-# ---------- Kill affected apps ----------
-for app in "Dock" "Finder" "SystemUIServer"; do
+# ---------- Activity Monitor ----------
+# Dock icon shows CPU usage; show all processes; sort by CPU.
+defaults write com.apple.ActivityMonitor IconType -int 5
+defaults write com.apple.ActivityMonitor ShowCategory -int 0
+defaults write com.apple.ActivityMonitor SortColumn -string "CPUUsage"
+defaults write com.apple.ActivityMonitor SortDirection -int 0
+
+# ---------- TextEdit ----------
+# Plain text mode, UTF-8 (matches what every other editor expects).
+defaults write com.apple.TextEdit RichText -int 0
+defaults write com.apple.TextEdit PlainTextEncoding -int 4
+defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
+
+# ---------- Kill affected apps so the changes take effect ----------
+for app in "Dock" "Finder" "SystemUIServer" "ActivityMonitor"; do
   killall "$app" &>/dev/null
 done
+
+echo "  [ OK ] macOS defaults applied"

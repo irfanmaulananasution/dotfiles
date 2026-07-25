@@ -1,20 +1,54 @@
+" --- encoding (set first; later options can depend on it) ---
+set encoding=utf-8
+
+" --- security ---
+" modeline parsing has been a recurring vim vuln surface (CVE-2019-12735 et
+" al); disable it outright. Costs nothing for a personal config.
+set modelines=0
+set nomodeline
+
+" --- UI ---
 syntax on
 set number
 set relativenumber
-set tabstop=2
-set shiftwidth=2
-set expandtab
-set smartindent
-set hlsearch
-set incsearch
-set ignorecase
-set smartcase
-set hidden
-set noswapfile
-set nobackup
-set nowritebackup
+set ruler               " always show cursor position
+set showcmd             " show incomplete command keystrokes
+set laststatus=2        " always show status line
+set visualbell          " silent bell (no beep + no screen flash)
 set scrolloff=8
 set sidescrolloff=8
 set wildmenu
-set wildmode=list:longest
+set wildmode=list:longest,full
 set mouse=a
+
+" --- editing ---
+set tabstop=2
+set shiftwidth=2
+set shiftround          " round indent to multiple of shiftwidth
+set expandtab
+set smartindent
+set nojoinspaces        " one space, not two, after .?! on J (matches code)
+filetype plugin indent on
+
+" --- search ---
+set hlsearch
+set incsearch
+set ignorecase
+set smartcase          " case-sensitive only if a capital appears in pattern
+
+" --- files / buffers ---
+set hidden             " allow switching buffers without writing
+set nobackup
+set nowritebackup
+set noswapfile
+set autoread           " reload file if changed outside vim
+set autowrite          " :write automatically before :make / shell-out
+
+" Make backspace delete like every other editor (default is vim's legacy mode
+" where it can't delete past the start of insert).
+set backspace=indent,eol,start
+
+" New splits open to the right and below, which feels more natural than the
+" default top/left.
+set splitbelow
+set splitright

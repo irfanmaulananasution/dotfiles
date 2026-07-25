@@ -65,7 +65,7 @@ That's it. The script handles everything end-to-end:
 | **Homebrew CLI** | git, gh, node, opencode, wget, mas |
 | **Apps (casks)** | Visual Studio Code, iTerm2, DBeaver, Rancher, Firefox, Obsidian, Anki, The Unarchiver |
 | **Mac App Store** | Xcode |
-| **SDKMAN** | Java 11 (Temurin), Gradle 7.6.4 |
+| **SDKMAN** | Java 21 LTS (Temurin) by default — bumpable via `JAVA_VERSION` env var. No global Gradle (per-project wrapper is the modern convention) |
 | **VS Code extensions** | Python, Java, Go, GitLens, Copilot, Vim bindings, Material Icons, Prettier, ESLint, Tailwind, Live Server, and more |
 | **Shell** | Oh My Zsh + aliases for git, node, docker, tmux, general |
 
@@ -107,7 +107,7 @@ That's it. The script handles everything end-to-end:
 │   └── aliases.zsh         # npm/yarn aliases
 ├── java/
 │   ├── path.zsh            # SDKMAN setup
-│   └── install.sh          # Installs SDKMAN, Java 11, Gradle
+│   └── install.sh          # Installs SDKMAN, Java 21 LTS (Temurin)
 ├── docker/
 │   └── aliases.zsh         # Docker aliases
 ├── tmux/
@@ -326,6 +326,134 @@ alternatives were rejected*.
   security fix lands). Bumping is a one-line edit per ref. The trade-off is
   deliberate: immutability now, manual maintenance later, versus a moving
   ref that silently tracks whatever the upstream branch points at.
+
+## Design Decisions — V4 configuration refactor
+
+A refactor pass over vim / tmux / macOS / Java / git / vscode / zsh. Each scope
+was rewritten by pulling in best practices from a canonical external
+reference, then pruning anything subjective or risky. References cited inline.
+
+### Java defaults to Java 21 LTS, no global Gradle
+- **Decision:** `java/install.sh` installs SDKMAN and a single Java LTS
+  (`21.0.5-tem` by default), overridable via the `JAVA_VERSION` env var.
+  Global Gradle is intentionally **not** installed.
+- **Why no Gradle:** since Gradle 4.x, the per-project Gradle Wrapper
+  (`./gradlew`, committed to the repo) is the canonical way to run Gradle.
+  A global `gradle` on `$PATH` silently overrides the wrapper's pinned
+  version and is a leading cause of "works on my machine" drift. The
+  previous behavior pinned `Gradle 7.6.4` globally, which would shadow every
+  project's wrapper. To install a specific Gradle for a one-off, the script
+  prints the exact `sdk install gradle <version>` command to run manually.
+- **Why Java 21 specifically:** the current LTS in widest production use
+  (released Sept 2023, supported through Sept 2028 per Oracle's roadmap).
+  Java 25 LTS (Sept 2025) is also out; bump the `JAVA_VERSION` variable
+  one line if you prefer it.
+- **References:** SDKMAN install docs
+  (<https://sdkman.io/install>, 2026 — confirms `curl -s "https://get.sdkman.io" | bash` remains the official install path); Gradle Wrapper docs
+  (<https://docs.gradle.org/current/userguide/gradle_wrapper.html>).
+
+### `vim/vimrc.symlink` — thoughtbot-inspired defaults, no plugin manager
+- **Decision:** expanded the 20-line vimrc to ~50 lines, adding settings
+  thoughtbot/dotfiles ships by default (`vimrc`, master branch): `encoding=utf-8`,
+  `backspace=indent,eol,start`, `ruler`, `showcmd`, `laststatus=2`,
+  `autowrite`, `filetype plugin indent on`, `nojoinspaces`, `shiftround`,
+  `splitbelow splitright`, plus a security hardening (`modelines=0`,
+  `nomodeline` — modeline parsing has been a recurring vim vulnerability
+  surface, e.g. CVE-2019-12735).
+- **Rejected:** thoughtbot's full `vimrc` pulls in ALE, FZF, vim-fugitive,
+  Catppuccin — those need a plugin manager (`vimrc.bundles`), which the user
+  explicitly opted out of ("balanced, no plugin manager"). Sticking to
+  built-in `:set` options only.
+- **Reference:** <https://github.com/thoughtbot/dotfiles/blob/master/vimrc>.
+
+### `tmux/tmux.conf.symlink` — gpakosz essentials, default prefix
+- **Decision:** added the universally-recommended settings from
+  gpakosz/.tmux (master): `escape-time 10` (removes vim-keys lag inside
+  tmux), `focus-events on` (so vim/nvim inside tmux sees focus changes),
+  `default-terminal "screen-256color"`, `automatic-rename on`,
+  `renumber-windows on` (close gaps), `set-titles on`, `monitor-activity
+  on`, and `-r` (repeatable) prefix on the vim-style pane bindings.
+- **Rejected:** gpakosz's full ~500-line config (theme code, battery
+  integration, copy-to-X11/Wayland clipboard, the elaborate
+  `_apply_configuration` shell-embedded function) — far too opinionated
+  for "balanced" and most of it is cosmetic statusline theming.
+- **Rejected:** remapping the prefix to `C-a` (gpakosz's `prefix2`) — too
+  opinionated, conflicts with readline's `C-a` (beginning-of-line).
+- **Reference:** <https://github.com/gpakosz/.tmux/blob/master/.tmux.conf>.
+
+### macOS defaults — mathiasbynens-style, scoped to safe + coder-friendly
+- **Decision:** rewrote `mac/defaults.symlink` to selectively include
+  mathiasbynens/`.macos` items. Kept the existing ones and added: keyboard
+  repeat acceleration, full keyboard access (`AppleKeyboardUIMode=3`),
+  save-to-disk-not-iCloud, plain-text UTF-8 TextEdit, disable caps/period
+  substitution, `FXEnableExtensionChangeWarning=false`,
+  `DSDontWriteUSBStores=true`, Activity Monitor CPU-usage Dock icon,
+  hot-corner top-right = Mission Control, screen-saver immediate password
+  requirement, hidden `~/Library` and `/Volumes` unhide.
+- **Rejected (security):** `LSQuarantine=false` (disables macOS's
+  "downloaded from internet" warning — a security gate), disk-image
+  verification skips (`skip-verify*`), Secure Keyboard Entry off.
+- **Rejected (intrusive):** `sudo nvram SystemAudioVolume=" "` (T2/Secure
+  Boot macs can refuse it), Spotlight rebuild via `sudo mdutil -E /`
+  (triggers a full reindex on every install), `sudo systemsetup` timezone
+  change (hardware/locale-specific), `sudo rm /private/var/vm/sleepimage`
+  (filesystem surgery for marginal space win), Notification Center
+  unload, Time Machine disable. All of these are either risky or step on
+  per-user preference.
+- **Kept:** the `sudo -v` upfront + keep-alive loop (the existing
+  pattern). Used only for `sudo chflags nohidden /Volumes` and
+  `chflags nohidden ~/Library`. Everything else is user-defaults (no
+  sudo).
+- **Reference:** <https://github.com/mathiasbynens/dotfiles/blob/master/.macos>.
+
+### `git/gitconfig.symlink` — thoughtbot essentials, no workflow imposition
+- **Decision:** added thoughtbot's universal wins: `core.autocrlf=input`
+  (cross-platform line-ending safety), `core.quotepath=false` (literal
+  non-ASCII filenames), `fetch.prune=true` (auto-prune deleted remote
+  branches), `rebase.autosquash=true` (reorder `fixup!`/`squash!` commits
+  automatically), `diff.colorMoved=zebra` (visualize code moves).
+- **Rejected:** thoughtbot's `merge.ff=only` (forces fast-forward-only
+  merges, blocking legitimate merge commits like vendored subtree
+  merges) — that's a workflow decision for rebase-only teams, not a safe
+  default. Removed before commit.
+- **Rejected:** `commit.template = ~/.gitmessage` (thoughtbot ships one,
+  but we don't ship a template file) and `include.path = ~/.gitconfig.local`
+  (we already inject identity via `.local/gitconfig` from
+  `git/install.sh`, an include would be redundant).
+- **Reference:** <https://github.com/thoughtbot/dotfiles/blob/master/gitconfig>.
+
+### `git/aliases.zsh` — dropped `gnuke` duplicate
+- **Decision:** removed `gnuke="git clean -df && git reset --hard"`.
+- **Why:** it's an exact duplicate of `gclean`. The alias did not add
+  behavior, only an alternate destructive name. Kept `gclean` (more
+  descriptive) and `gforce` (uses `--force-with-lease`, which is the
+  safer-than-`-f` form).
+
+### `zsh/config.zsh` — history hygiene
+- **Decision:** kept the existing options and added `HIST_IGNORE_SPACE`
+  (commands prefixed with a space are not recorded — typing ` <secret>`
+  keeps secrets out of history on disk), `HIST_FIND_NO_DUPS` (skip
+  duplicates when navigating), `HIST_VERIFY` (show the expanded history
+  line before running, so `!1234`-style recalls get a chance to be
+  edited or aborted), `HIST_REDUCE_BLIPS` (drop superfluous entries).
+- **Inherent in the choice:** `SHARE_HISTORY` (already present) writes
+  every command to disk immediately and shares it across sessions; this
+  is a feature for multi-window workflows but means anything in history
+  is on disk fast — `HIST_IGNORE_SPACE` is the safety valve for that.
+
+### `vscode/settings.json` — universal defaults, telemetry stays off
+- **Decision:** added `files.insertFinalNewline`,
+  `files.trimFinalNewlines`, `files.trimTrailingWhitespace` (POSIX
+  compliance — files end with one newline and no trailing whitespace),
+  `editor.rulers: [100]`, `search.exclude` (node_modules / dist / build
+  / .git), `workbench.editor.enablePreview: false` (preview tabs are
+  a frequent source of "where did my file go" confusion for new users).
+- **Kept:** `telemetry.telemetryLevel: "off"` (already present) —
+  non-negotiable for a config that ships in a dotfiles repo.
+- **Rejected:** opinionated defaults like a specific formatter
+  (`editor.defaultFormatter`), specific linters, per-language
+  `formatOnSave` beyond json/jsonc, or theme overrides — all are
+  project-specific and don't belong in shared user settings.
 
 ## Resources
 
