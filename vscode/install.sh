@@ -5,17 +5,23 @@
 set -euo pipefail
 
 DOTFILES_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
+LOCAL_DIR="$DOTFILES_DIR/.local"
 VSCODE_USER_DIR="$HOME/Library/Application Support/Code/User"
+LOCAL_SETTINGS="$LOCAL_DIR/vscode_settings.json"
 
-mkdir -p "$VSCODE_USER_DIR"
+mkdir -p "$VSCODE_USER_DIR" "$LOCAL_DIR"
 
-# Symlink settings (backup existing real file)
+# Use .local/ pattern so VS Code UI changes don't dirty the repo
+if [ ! -f "$LOCAL_SETTINGS" ]; then
+  cp "$DOTFILES_DIR/vscode/settings.json" "$LOCAL_SETTINGS"
+fi
+
 if [ -f "$VSCODE_USER_DIR/settings.json" ] && [ ! -L "$VSCODE_USER_DIR/settings.json" ]; then
   mv "$VSCODE_USER_DIR/settings.json" "$VSCODE_USER_DIR/settings.json.backup"
 fi
-ln -sf "$DOTFILES_DIR/vscode/settings.json" "$VSCODE_USER_DIR/settings.json"
+ln -sf "$LOCAL_SETTINGS" "$VSCODE_USER_DIR/settings.json"
 
-echo "  [ OK ] VS Code settings symlinked"
+echo "  [ OK ] VS Code settings symlinked via .local/"
 
 # Install recommended extensions
 #

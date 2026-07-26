@@ -10,22 +10,10 @@
   "editor.minimap.enabled": false,
   "editor.renderWhitespace": "boundary",
   "editor.tabSize": 2,
-  "editor.rulers": [100],
   "files.autoSave": "onFocusChange",
-  "files.insertFinalNewline": true,
-  "files.trimFinalNewlines": true,
-  "files.trimTrailingWhitespace": true,
-  "search.exclude": {
-    "**/node_modules": true,
-    "**/dist": true,
-    "**/build": true,
-    "**/.git": true,
-    "**/.DS_Store": true
-  },
   "telemetry.telemetryLevel": "off",
-  "workbench.colorTheme": "Default Dark Modern",
+  "workbench.colorTheme": "Dark Modern",
   "workbench.startupEditor": "none",
-  "workbench.editor.enablePreview": false,
   "gitlens.ai.model": "vscode",
   "gitlens.ai.vscode.model": "copilotcli:"
 }

@@ -68,6 +68,27 @@ bash "$DOTFILES_DIR/script/bootstrap"
 # ---------- Create directories ----------
 mkdir -p "$HOME/Code"
 
+# ---------- Validate .env.local ----------
+if [ -f "$HOME/.env" ]; then
+  set -a
+  source "$HOME/.env"
+  set +a
+
+  if [ "${GIT_AUTHOR_NAME:-}" = "Your Name" ] || [ "${GIT_AUTHOR_EMAIL:-}" = "your@email.com" ] || [ -z "${GIT_AUTHOR_NAME:-}" ] || [ -z "${GIT_AUTHOR_EMAIL:-}" ]; then
+    echo "[FAIL] GIT_AUTHOR_NAME / GIT_AUTHOR_EMAIL still have placeholder or empty values."
+    echo "       Edit $DOTFILES_DIR/.local/.env.local and set your real name and email."
+    exit 1
+  fi
+
+  if [ -z "${PERSONAL_OPENCODE_API_KEY:-}" ] || [ "${PERSONAL_OPENCODE_API_KEY#sk-}" = "" ]; then
+    echo "[FAIL] PERSONAL_OPENCODE_API_KEY is empty or still a placeholder."
+    echo "       Edit $DOTFILES_DIR/.local/.env.local and set your real API key."
+    exit 1
+  fi
+
+  echo "  [ OK ] .env.local validated"
+fi
+
 # ---------- Topic installers ----------
 while IFS= read -r -d '' installer; do
   topic=$(basename "$(dirname "$installer")")

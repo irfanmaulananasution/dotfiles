@@ -3,6 +3,7 @@ cask_args require_sha: true
 
 # CLI tools
 brew "git"
+brew "bash"
 brew "gh"
 brew "node"
 brew "opencode"
