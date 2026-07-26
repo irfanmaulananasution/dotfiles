@@ -12,7 +12,7 @@
   "editor.tabSize": 2,
   "files.autoSave": "onFocusChange",
   "telemetry.telemetryLevel": "off",
-  "workbench.colorTheme": "Default Dark Modern",
+  "workbench.colorTheme": "Dark Modern",
   "workbench.startupEditor": "none",
   "gitlens.ai.model": "vscode",
   "gitlens.ai.vscode.model": "copilotcli:"

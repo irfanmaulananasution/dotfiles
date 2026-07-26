@@ -70,19 +70,25 @@ fi
 
 # ---------- Upload SSH key to GitHub ----------
 if [ -f "$SSH_KEY.pub" ] && command -v gh &>/dev/null && gh auth status 2>/dev/null; then
-  echo ""
-  echo "  Opening https://github.com/settings/keys ..."
-  echo "  Click 'New SSH Key', paste the key below, then come back."
-  echo "  (Or copy it yourself: cat $SSH_KEY.pub | pbcopy)"
-  echo ""
-  cat "$SSH_KEY.pub"
-  echo ""
-  open "https://github.com/settings/keys"
-  read -rp "  Press y when done: " confirm
-  if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
-    echo "  [ .. ] Skipped. Upload later from https://github.com/settings/keys"
+  # Check if key is already registered with GitHub
+  KEY_FP=$(ssh-keygen -lf "$SSH_KEY.pub" | awk '{print $2}')
+  if gh ssh-key list 2>/dev/null | grep -q "$KEY_FP"; then
+    echo "  [ OK ] SSH key already registered with GitHub"
   else
-    echo "  [ OK ] SSH key uploaded to GitHub"
+    echo ""
+    echo "  Opening https://github.com/settings/keys ..."
+    echo "  Click 'New SSH Key', paste the key below, then come back."
+    echo "  (Or copy it yourself: cat $SSH_KEY.pub | pbcopy)"
+    echo ""
+    cat "$SSH_KEY.pub"
+    echo ""
+    open "https://github.com/settings/keys"
+    read -rp "  Press y when done: " confirm
+    if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+      echo "  [ .. ] Skipped. Upload later from https://github.com/settings/keys"
+    else
+      echo "  [ OK ] SSH key uploaded to GitHub"
+    fi
   fi
   echo "  GitHub user: $(gh api user --jq '.login' 2>/dev/null || echo 'unknown')"
 fi

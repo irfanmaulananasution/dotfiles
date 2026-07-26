@@ -2,10 +2,23 @@
   ui = auto
 [core]
   excludesfile = ~/.gitignore_global
+  # Input normalizes CRLF→LF on commit but never rewrites on checkout; safe
+  # default for cross-platform repos (no surprise line-ending churn).
+  autocrlf = input
+  # Render non-ASCII filenames literally instead of octal escapes.
+  quotepath = false
 [init]
   defaultBranch = main
 [push]
   default = current
 [pull]
   rebase = true
+[fetch]
+  # Prune deleted remote branches on every fetch (replaces `git remote prune`).
+  prune = true
+[rebase]
+  autosquash = true
+[diff]
+  # Color moved blocks differently — makes refactors visible at a glance.
+  colorMoved = zebra
 # Identity is appended by git/install.sh into .local/gitconfig — do not edit here.

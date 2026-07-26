@@ -17,6 +17,5 @@ alias shrug="echo '¯\_(ツ)_/¯' | pbcopy"
 alias ll="ls -lahF"
 
 # Quick navigation
-alias ~="cd ~"
 alias ..="cd .."
 alias ...="cd ../.."

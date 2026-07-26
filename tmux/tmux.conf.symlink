@@ -1,31 +1,56 @@
-# Enable mouse mode
-set -g mouse on
+# --- terminal / colors ---
+# screen-256color is universally available; gpakosz/.tmux probes for
+# tmux-256color (needs the terminfo extra) but falls back to this.
+set -g default-terminal "screen-256color"
 
-# Increase scrollback buffer
+# --- input responsiveness ---
+# Default escape-time 500ms makes vim's <Esc> / terminal apps sluggish. 10ms is
+# enough to disambiguate without buffering keystrokes.
+set -s escape-time 10
+set -s focus-events on
+
+# --- history ---
 set -g history-limit 10000
 
-# Use vim keybindings
-setw -g mode-keys vi
-
-# Start window numbering at 1
+# --- window / pane indexing (1-based for ergonomics) ---
 set -g base-index 1
 setw -g pane-base-index 1
+set -g renumber-windows on      # close gaps when a window is closed
+setw -g automatic-rename on     # rename window to reflect current program
 
-# Status bar
-set -g status-bg black
-set -g status-fg white
-set -g status-left '#[fg=green]#S '
-set -g status-right '#[fg=yellow]%Y-%m-%d %H:%M'
+# --- titles / activity ---
+set -g set-titles on
+set -g set-titles-string "#S:#I.#P #W"
+set -g monitor-activity on
+set -g visual-activity off
 
-# Reload config
+# --- mouse ---
+set -g mouse on
+
+# --- copy mode (vi) ---
+setw -g mode-keys vi
+
+# --- reload ---
 bind r source-file ~/.tmux.conf \; display-message "Config reloaded"
 
-# Split panes
+# --- splits (mnemonic: | vertical, - horizontal) ---
 bind | split-window -h
 bind - split-window -v
 
-# Move between panes with vim keys
-bind h select-pane -L
-bind j select-pane -D
-bind k select-pane -U
-bind l select-pane -R
+# --- pane nav (vim-style; -r makes repeats work with one prefix) ---
+bind -r h select-pane -L
+bind -r j select-pane -D
+bind -r k select-pane -U
+bind -r l select-pane -R
+
+# --- pane resize (also repeatable) ---
+bind -r H resize-pane -L 2
+bind -r J resize-pane -D 2
+bind -r K resize-pane -U 2
+bind -r L resize-pane -R 2
+
+# --- status line ---
+set -g status-bg black
+set -g status-fg white
+set -g status-left  '#[fg=green]#S '
+set -g status-right '#[fg=yellow]%Y-%m-%d %H:%M'

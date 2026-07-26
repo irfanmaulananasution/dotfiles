@@ -5,42 +5,48 @@
 set -euo pipefail
 
 DOTFILES_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
+LOCAL_DIR="$DOTFILES_DIR/.local"
 VSCODE_USER_DIR="$HOME/Library/Application Support/Code/User"
+LOCAL_SETTINGS="$LOCAL_DIR/vscode_settings.json"
 
-mkdir -p "$VSCODE_USER_DIR"
+mkdir -p "$VSCODE_USER_DIR" "$LOCAL_DIR"
 
-# Symlink settings (backup existing real file)
+# Use .local/ pattern so VS Code UI changes don't dirty the repo
+if [ ! -f "$LOCAL_SETTINGS" ]; then
+  cp "$DOTFILES_DIR/vscode/settings.json" "$LOCAL_SETTINGS"
+fi
+
 if [ -f "$VSCODE_USER_DIR/settings.json" ] && [ ! -L "$VSCODE_USER_DIR/settings.json" ]; then
   mv "$VSCODE_USER_DIR/settings.json" "$VSCODE_USER_DIR/settings.json.backup"
 fi
-ln -sf "$DOTFILES_DIR/vscode/settings.json" "$VSCODE_USER_DIR/settings.json"
+ln -sf "$LOCAL_SETTINGS" "$VSCODE_USER_DIR/settings.json"
 
-echo "  [ OK ] VS Code settings symlinked"
+echo "  [ OK ] VS Code settings symlinked via .local/"
 
 # Install recommended extensions
+#
+# Selection rules:
+#   - Universal dev tools only (Prettier, ESLint, EditorConfig, GitLens, Copilot).
+#   - Language packs cover their whole ecosystem (vscjava.vscode-java-pack
+#     bundles redhat.java, java-debug, maven, gradle — listing those standalone
+#     would double-install them).
+#   - No project-specific add-ons (Tailwind, Go, Jupyter, LiveServer) — install
+#     those per-project as needed.
+#   - One icon theme (Material).
 extensions=(
-  "bierner.markdown-preview-github-styles"
-  "bradlc.vscode-tailwindcss"
-  "dbaeumer.vscode-eslint"
-  "eamodio.gitlens"
   "EditorConfig.EditorConfig"
-  "esbenp.prettier-vscode"
-  "formulahendry.auto-rename-tag"
   "GitHub.copilot"
   "GitHub.copilot-chat"
-  "golang.go"
+  "PKief.material-icon-theme"
+  "bierner.markdown-preview-github-styles"
+  "dbaeumer.vscode-eslint"
+  "eamodio.gitlens"
+  "esbenp.prettier-vscode"
+  "formulahendry.auto-rename-tag"
   "ms-python.python"
   "ms-python.vscode-pylance"
-  "ms-toolsai.jupyter"
   "ms-vscode-remote.remote-ssh"
-  "PKief.material-icon-theme"
-  "redhat.java"
-  "ritwickdey.LiveServer"
-  "vscjava.vscode-gradle"
   "vscjava.vscode-java-pack"
-  "vscjava.vscode-java-debug"
-  "vscjava.vscode-maven"
-  "vscode-icons-team.vscode-icons"
   "vscodevim.vim"
 )
 
