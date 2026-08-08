@@ -90,6 +90,9 @@ class CostSpanProcessor(SpanProcessor):
                 total = ccost
 
             new_attrs = {
+                # Phoenix's cost calculator requires openinference.span.kind="LLM".
+                # Set it here so future spans get cost-computed at ingest time.
+                "openinference.span.kind": "LLM",
                 "llm.token_count.prompt": prompt,
                 "llm.token_count.completion": completion,
                 "llm.token_count.total": (prompt + completion)
@@ -101,6 +104,11 @@ class CostSpanProcessor(SpanProcessor):
                 "llm.token_count.completion_cost": ccost,
                 "llm.token_count.total_cost": total,
                 "llm.model_name": model or None,
+                # Phoenix traces page reads gen_ai.cost.* (OpenInference standard),
+                # not llm.token_count.*_cost — write both so all views show data.
+                "gen_ai.cost.total_cost": total,
+                "gen_ai.cost.input_cost": pcost,
+                "gen_ai.cost.output_cost": ccost,
             }
 
             # The SDK freezes the span (sets _end_time, marks attributes
