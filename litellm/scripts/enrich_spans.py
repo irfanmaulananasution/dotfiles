@@ -33,8 +33,8 @@ def _ensure_cursors(cur: Any, conn: Any) -> None:
     """)
     conn.commit()
 
-    cur.execute("SELECT COALESCE(MAX(id), 0) FROM spans")
-    max_id = cur.fetchone()[0]
+    cur.execute("SELECT COALESCE(MAX(id), 0) AS max_id FROM spans")
+    max_id = cur.fetchone()["max_id"]
 
     for cursor_name in ("enrich-promotion", "enrich-sessions", "eval-accuracy"):
         cur.execute("""
@@ -48,7 +48,7 @@ def _ensure_cursors(cur: Any, conn: Any) -> None:
 def _read_cursor(cur: Any, name: str) -> int:
     cur.execute("SELECT last_span_id FROM enrich_cursor WHERE name = %(name)s", {"name": name})
     row = cur.fetchone()
-    return row[0] if row else 0
+    return row["last_span_id"] if row else 0
 
 
 def _write_cursor(cur: Any, conn: Any, name: str, last_id: int) -> None:
@@ -286,8 +286,8 @@ def enrich_cycle(db_url: str, dry_run: bool = False) -> int:
     wm_promotion = _read_cursor(cur, "enrich-promotion")
     wm_sessions = _read_cursor(cur, "enrich-sessions")
 
-    cur.execute("SELECT COALESCE(MAX(id), 0) FROM spans")
-    current_max = cur.fetchone()[0]
+    cur.execute("SELECT COALESCE(MAX(id), 0) AS max_id FROM spans")
+    current_max = cur.fetchone()["max_id"]
 
     promoted, max_promoted = _promote_tokens_to_roots(cur, conn, wm_promotion,
                                                       dry_run=dry_run)
