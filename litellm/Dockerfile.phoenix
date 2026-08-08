@@ -1,0 +1,16 @@
+FROM python:3.12-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir \
+    arize-phoenix \
+    asyncpg
+
+EXPOSE 6006 4317
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
+  CMD curl -sf http://localhost:6006 > /dev/null 2>&1 || exit 1
+
+CMD ["arize-phoenix", "serve"]

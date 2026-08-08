@@ -15,7 +15,7 @@ Inspired by [holman/dotfiles](https://github.com/holman/dotfiles), [driesvints/d
 ### 1. Clone and set up
 
 ```bash
-git clone <url> ~/.dotfiles
+git clone https://github.com/irfanmaulananasution/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
 mkdir -p .local && cp .env.example .local/.env.local
 ```
@@ -62,59 +62,99 @@ That's it. The script handles everything end-to-end:
 
 | Category | Items |
 |----------|-------|
-| **Homebrew CLI** | git, gh, node, opencode, wget, mas |
+| **Homebrew CLI** | git, bash, gh, node, opencode, caddy, uv, wget, mas |
 | **Apps (casks)** | Visual Studio Code, iTerm2, DBeaver, Rancher, Firefox, Obsidian, Anki, The Unarchiver |
 | **Mac App Store** | Xcode |
 | **SDKMAN** | Java 21 LTS (Temurin) by default — bumpable via `JAVA_VERSION` env var. No global Gradle (per-project wrapper is the modern convention) |
-| **VS Code extensions** | Python, Java, Go, GitLens, Copilot, Vim bindings, Material Icons, Prettier, ESLint, Tailwind, Live Server, and more |
+| **VS Code extensions** | Python, Java, GitLens, Copilot + Copilot Chat, Prettier, ESLint, EditorConfig, Pylance, Auto Rename Tag, Material Icons, Markdown Preview, Remote SSH |
 | **Shell** | Oh My Zsh + aliases for git, node, docker, tmux, general |
 
 ## Structure
 
 ```
 ~/.dotfiles/
-├── install.sh              # One-command installer
-├── .zshrc                  # Main zsh config (→ .local/.zshrc → ~/.zshrc)
-├── .env.example            # Template for secrets (→ .local/.env.local)
-├── Brewfile                # Homebrew dependencies (declarative)
-├── .gitignore               # Repo-level ignores
-├── .local/                 # Generated machine files (gitignored)
+├── install.sh                   # One-command installer
+├── .zshrc                       # Main zsh config (→ .local/.zshrc → ~/.zshrc)
+├── .env.example                 # Template for secrets (→ .local/.env.local)
+├── AGENTS.md                    # Repo conventions for AI agents
+├── TODO.md                      # Personal setup backlog
+├── Brewfile                     # Homebrew dependencies (declarative)
+├── .gitignore                   # Repo-level ignores
+├── .pre-commit-config.yaml      # gitleaks hook to block secrets on commit
+├── .local/                      # Generated machine files (gitignored)
 ├── bin/
-│   └── dot                 # Utility: dot bootstrap|update
+│   └── dot                      # Utility: dot bootstrap|install|update|macos
 ├── script/
-│   └── bootstrap           # Copy templates to .local/, symlink to $HOME
+│   └── bootstrap                # Copy templates to .local/, symlink to $HOME
 ├── opencode/
-│   ├── opencode.jsonc      # Config (API key via {env:…})
-│   └── install.sh          # Symlinks to ~/.config/opencode/
+│   ├── opencode.jsonc           # Providers point to LiteLLM; keys via {env:…}
+│   ├── scripts/
+│   │   └── opencode-web.sh      # Headless `opencode serve` wrapper (launchd)
+│   └── install.sh               # Symlink config + web auto-start
+├── litellm/
+│   ├── config.yaml              # Model routes (per-provider sections)
+│   ├── docker-compose.yml       # postgres + phoenix + litellm + enrich + eval-accuracy
+│   ├── Dockerfile               # LiteLLM proxy image (also used by sidecars)
+│   ├── Dockerfile.phoenix       # Arize Phoenix image
+│   ├── docker-entrypoint.sh     # Applies OTEL_ENDPOINT and monkey patch at startup
+│   ├── monkey_patch.py          # DeepSeek cache fields + CostSpanProcessor
+│   ├── otel_utils.py            # Shared pricing/parse helpers (MODEL_PRICING)
+│   ├── db/
+│   │   ├── init.sql             # Create litellm DB on first postgres startup
+│   │   ├── pricing.sql          # Phoenix generative_models + token_prices seeds
+│   │   └── evaluators.sql       # Phoenix task_accuracy evaluator seeds
+│   ├── scripts/
+│   │   ├── enrich_spans.py      # Sidecar: token promotion + sessions
+│   │   └── evaluate_accuracy.py  # Sidecar: LLM-as-judge accuracy annotations
+│   ├── install.sh               # Generate env in .local/, bring up the stack, seed Phoenix
+│   └── README.md                # Full architecture/operations guide for the stack
+├── k8s/
+│   ├── namespace.yaml           # llm-stack namespace
+│   ├── postgres.yaml            # Postgres StatefulSet + Service
+│   ├── phoenix.yaml             # Phoenix Deployment + Service
+│   ├── litellm.yaml             # LiteLLM Deployment + Service
+│   ├── kustomization.yaml       # Ties manifests + secretGenerator
+│   ├── .env.example             # Template for kustomize's secret env file
+│   └── setup.sh                 # Generate .local/k8s.env.local, apply, delete temp .env
+├── caddy/
+│   ├── Caddyfile                # https://*.localhost → local services
+│   └── install.sh               # Symlink config, clean up old hosts entries, start Caddy
 ├── git/
-│   ├── aliases.zsh         # Git aliases (gs, gc, gl, gp, …)
-│   ├── gitconfig.symlink   # → .local/gitconfig → ~/.gitconfig
-│   ├── gitignore_global.symlink  # → .local/gitignore_global → ~/.gitignore_global
-│   └── install.sh          # Reads ~/.env for identity + SSH key setup
+│   ├── aliases.zsh              # Git aliases (gs, gc, gl, gp, …)
+│   ├── gitconfig.symlink        # → .local/gitconfig → ~/.gitconfig
+│   ├── gitignore_global.symlink # → .local/gitignore_global → ~/.gitignore_global
+│   └── install.sh               # Reads ~/.env for identity + SSH key setup
 ├── mac/
-│   ├── defaults.symlink    # macOS system defaults (declarative)
-│   └── install.sh          # Applies macOS defaults
+│   ├── defaults.symlink         # macOS system defaults (declarative)
+│   ├── startup.symlink          # → .local/startup → ~/.startup (launchd on login)
+│   └── install.sh               # Apply defaults + register startup LaunchAgent
+├── firefox/
+│   └── install.sh               # Vertical tabs, extensions, bookmarks via user.js
+├── rancher/
+│   ├── settings.json            # Rancher Desktop settings
+│   └── install.sh               # Apply Rancher Desktop settings
 ├── zsh/
-│   ├── aliases.zsh         # Shell aliases
-│   ├── path.zsh            # PATH setup
-│   └── config.zsh          # Shell options
+│   ├── aliases.zsh              # Shell aliases
+│   ├── path.zsh                 # PATH setup
+│   └── config.zsh               # Shell options
 ├── vscode/
-│   ├── settings.json       # Editor settings
-│   └── install.sh          # Symlinks settings + installs extensions
+│   ├── settings.json            # Editor settings
+│   └── install.sh               # Symlink settings + install extensions
 ├── iterm2/
-│   └── restore.sh          # Point iTerm2 to dotfiles prefs
+│   ├── com.googlecode.iterm2.plist.template
+│   └── restore.sh               # Point iTerm2 at the dotfiles prefs
 ├── node/
-│   └── aliases.zsh         # npm/yarn aliases
+│   └── aliases.zsh              # npm/yarn aliases
 ├── java/
-│   ├── path.zsh            # SDKMAN setup
-│   └── install.sh          # Installs SDKMAN, Java 21 LTS (Temurin)
+│   ├── path.zsh                 # SDKMAN setup
+│   └── install.sh               # Install SDKMAN, Java 21 LTS (Temurin)
 ├── docker/
-│   └── aliases.zsh         # Docker aliases
+│   └── aliases.zsh              # Docker aliases
 ├── tmux/
-│   ├── aliases.zsh         # tmux aliases
-│   └── tmux.conf.symlink   # → .local/tmux.conf → ~/.tmux.conf
+│   ├── aliases.zsh              # tmux aliases
+│   └── tmux.conf.symlink        # → .local/tmux.conf → ~/.tmux.conf
 └── vim/
-    └── vimrc.symlink       # → .local/vimrc → ~/.vimrc
+    └── vimrc.symlink            # → .local/vimrc → ~/.vimrc
 ```
 
 ### How it works
@@ -289,16 +329,14 @@ alternatives were rejected*.
   a checksum, it should be handled individually, not by disabling
   verification globally.
 
-### SSH keys are generated with a passphrase, stored in the macOS keychain
+### SSH keys are generated without a passphrase
 - **Decision:** `git/install.sh:45` runs `ssh-keygen -t ed25519 -C "$email"
-  -f "$SSH_KEY"` (no `-N ""`), so the user is prompted once for a
-  passphrase. The same script then calls
-  `ssh-add --apple-use-keychain "$SSH_KEY"` so the passphrase is only
-  needed once on first use.
-- **Rejected:** the original `-N ""` generated an unencrypted private key
-  with `0600` as the only barrier. Any process running as the user (or a
-  `tar` of `~/.ssh`) would yield instant GitHub access via the key this
-  script then auto-uploads. The passphrase adds a second factor at rest.
+  -f "$SSH_KEY" -N ""`, so the key is created without a passphrase.
+  This avoids prompting during automated installs and CI-like provisioning.
+- **Trade-off:** no passphrase means the private key on disk (`0600`) is the
+  only barrier. A process running as the user or a backup of `~/.ssh` would
+  yield immediate GitHub access. Acceptable because the dotfiles are for a
+  single-user personal machine, not a shared environment.
 
 ### Global gitignore covers all `.env.*` variants
 - **Decision:** `git/gitignore_global.symlink:13-16` is

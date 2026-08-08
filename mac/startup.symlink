@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# .startup — runs at login via LaunchAgent
+# Add anything that should run on macOS startup below.
+set -euo pipefail
+
+# Disable system sleep when on AC power (0 = system sleep disabled)
+sudo pmset -a disablesleep 0

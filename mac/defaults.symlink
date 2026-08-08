@@ -52,8 +52,8 @@ defaults write com.apple.systempreferences NSQuitAlwaysKeepsWindows -bool false
 # ---------- Keyboard ----------
 # Fast key repeat (good for editors); disable press-and-hold accents.
 defaults write NSGlobalDomain ApplePressAndHoldEnabled -bool false
-defaults write NSGlobalDomain KeyRepeat -int 1
-defaults write NSGlobalDomain InitialKeyRepeat -int 10
+defaults write NSGlobalDomain KeyRepeat -int 5
+defaults write NSGlobalDomain InitialKeyRepeat -int 25
 
 # Full keyboard access: Tab moves between all controls, not just lists.
 defaults write NSGlobalDomain AppleKeyboardUIMode -int 3
@@ -123,13 +123,38 @@ defaults write com.apple.dock wvous-bl-modifier -int 0
 defaults write com.apple.dock wvous-tr-corner -int 2
 defaults write com.apple.dock wvous-tr-modifier -int 0
 
+# Pin only the apps I actually use in the Dock.
+defaults write com.apple.dock persistent-apps -array
+
+DOCK_APPS=(
+  "Firefox:/Applications/Firefox.app"
+  "iTerm:/Applications/iTerm.app"
+  "Visual Studio Code:/Applications/Visual Studio Code.app"
+  "DBeaver:/Applications/DBeaver.app"
+  "Rancher Desktop:/Applications/Rancher Desktop.app"
+  "Obsidian:/Applications/Obsidian.app"
+  "Anki:/Applications/Anki.app"
+  "System Settings:/System/Applications/System Settings.app"
+)
+
+for entry in "${DOCK_APPS[@]}"; do
+  name="${entry%%:*}"
+  path="${entry##*:}"
+  if [ -d "$path" ]; then
+    defaults write com.apple.dock persistent-apps -array-add \
+      "<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>${path}</string><key>_CFURLStringType</key><integer>0</integer></dict></dict></dict>"
+  fi
+done
+unset DOCK_APPS
+
 # ---------- Screen ----------
 # Require password immediately after sleep or screen saver starts.
 defaults write com.apple.screensaver askForPassword -int 1
 defaults write com.apple.screensaver askForPasswordDelay -int 0
 
 # Screenshots: PNG to ~/Desktop with no drop-shadow.
-defaults write com.apple.screencapture location -string "$HOME/Desktop"
+mkdir -p "$HOME/Pictures/Screenshots"
+defaults write com.apple.screencapture location -string "$HOME/Pictures/Screenshots"
 defaults write com.apple.screencapture type -string "png"
 defaults write com.apple.screencapture disable-shadow -bool true
 
@@ -145,6 +170,29 @@ defaults write com.apple.ActivityMonitor SortDirection -int 0
 defaults write com.apple.TextEdit RichText -int 0
 defaults write com.apple.TextEdit PlainTextEncoding -int 4
 defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
+
+# ---------- Default Browser ----------
+# Set Firefox as the default browser for http/https.
+FIREFOX_ID="org.mozilla.firefox"
+if [ -d "/Applications/Firefox.app" ]; then
+  /usr/bin/python3 -c "
+import plistlib, os
+path = os.path.expanduser('~/Library/Preferences/com.apple.LaunchServices/com.apple.launchservices.secure.plist')
+os.makedirs(os.path.dirname(path), exist_ok=True)
+try:
+    with open(path, 'rb') as f:
+        prefs = plistlib.load(f)
+except FileNotFoundError:
+    prefs = {}
+handlers = [h for h in prefs.get('LSHandlers', []) if h.get('LSHandlerURLScheme') not in ('http', 'https')]
+handlers.append({'LSHandlerURLScheme': 'http', 'LSHandlerRoleAll': '${FIREFOX_ID}'})
+handlers.append({'LSHandlerURLScheme': 'https', 'LSHandlerRoleAll': '${FIREFOX_ID}'})
+prefs['LSHandlers'] = handlers
+with open(path, 'wb') as f:
+    plistlib.dump(prefs, f)
+"
+fi
+unset FIREFOX_ID
 
 # ---------- Kill affected apps so the changes take effect ----------
 for app in "Dock" "Finder" "SystemUIServer" "ActivityMonitor"; do

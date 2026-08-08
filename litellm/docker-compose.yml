@@ -1,0 +1,102 @@
+services:
+  postgres:
+    container_name: postgres
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: phoenix
+      POSTGRES_PASSWORD: ${PHOENIX_DB_PASSWORD:-phoenix}
+      POSTGRES_DB: phoenix
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01-create-litellm-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U phoenix -d phoenix"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  phoenix:
+    container_name: phoenix
+    build:
+      context: .
+      dockerfile: Dockerfile.phoenix
+    # Loopback-only: Phoenix UI has no auth and stores full prompt/response
+    # content, so it must not be reachable from the LAN. Caddy's
+    # *.localhost reverse proxies still work (they resolve to 127.0.0.1).
+    ports:
+      - "127.0.0.1:6006:6006"
+      - "127.0.0.1:4317:4317"
+    environment:
+      PHOENIX_SQL_DATABASE_URL: postgresql+asyncpg://phoenix:${PHOENIX_DB_PASSWORD:-phoenix}@postgres:5432/phoenix
+      PHOENIX_PORT: 6006
+      PHOENIX_GRPC_PORT: 4317
+      PHOENIX_OTLP_PORT: 4317
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  litellm:
+    container_name: litellm
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Loopback-only (key-authenticated, but no reason to expose to the LAN).
+    ports:
+      - "127.0.0.1:4000:4000"
+    environment:
+      LITELLM_KEY: ${LITELLM_KEY}
+      PERSONAL_OPENCODE_API_KEY: ${PERSONAL_OPENCODE_API_KEY:?error}
+      PERSONAL_DEEPSEEK_API_KEY: ${PERSONAL_DEEPSEEK_API_KEY:?error}
+      OTEL_ENDPOINT: http://phoenix:4317
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://phoenix:6006
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_SERVICE_NAME: litellm
+      OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: span_and_event
+    volumes:
+      - litellm_data:/app/data
+      - ./monkey_patch.py:/app/monkey_patch.py:ro
+      - ./otel_utils.py:/app/otel_utils.py:ro
+    command:
+      - "--port"
+      - "4000"
+      - "--config"
+      - "/app/config.yaml"
+    depends_on:
+      - phoenix
+    restart: unless-stopped
+
+  enrich:
+    container_name: enrich
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      PYTHONUNBUFFERED: "1"
+    entrypoint: ["python3", "/app/enrich_spans.py", "--db-url", "postgresql://phoenix:${PHOENIX_DB_PASSWORD:-phoenix}@postgres:5432/phoenix", "--watch"]
+    volumes:
+      - ./scripts/enrich_spans.py:/app/enrich_spans.py
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  eval-accuracy:
+    container_name: eval-accuracy
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      PYTHONUNBUFFERED: "1"
+      DEEPSEEK_API_KEY: ${PERSONAL_DEEPSEEK_API_KEY:?error}
+    entrypoint: ["python3", "/app/evaluate_accuracy.py", "--db-url", "postgresql://phoenix:${PHOENIX_DB_PASSWORD:-phoenix}@postgres:5432/phoenix", "--watch", "--sample-rate", "0.05"]
+    volumes:
+      - ./scripts/evaluate_accuracy.py:/app/evaluate_accuracy.py
+      - ./otel_utils.py:/app/otel_utils.py:ro
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  litellm_data:
