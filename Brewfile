@@ -7,7 +7,10 @@ brew "bash"
 brew "gh"
 brew "node"
 brew "opencode"
+brew "caddy"
+brew "uv"
 brew "wget"
+
 brew "mas"
 
 # Cask apps — development

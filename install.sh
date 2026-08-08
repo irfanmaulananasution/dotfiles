@@ -106,11 +106,7 @@ fi
 echo ""
 echo "==> Verification"
 if command -v gh &>/dev/null && gh auth status 2>/dev/null; then
-  if ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
-    echo "  SSH to GitHub: OK"
-  else
-    echo "  [ .. ] SSH key not configured yet. Run 'ssh -T git@github.com' after uploading."
-  fi
+  echo "  GitHub CLI: OK"
 fi
 
 echo ""

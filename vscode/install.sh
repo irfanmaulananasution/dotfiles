@@ -47,7 +47,6 @@ extensions=(
   "ms-python.vscode-pylance"
   "ms-vscode-remote.remote-ssh"
   "vscjava.vscode-java-pack"
-  "vscodevim.vim"
 )
 
 if command -v code &>/dev/null; then

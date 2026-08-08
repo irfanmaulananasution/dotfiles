@@ -41,13 +41,80 @@ if [ -z "${PERSONAL_OPENCODE_API_KEY:-}" ]; then
   exit 1
 fi
 
-mkdir -p "$CONFIG_DIR"
+# Warn if OPENCODE_SERVER_PASSWORD is not set
+if [ -z "${OPENCODE_SERVER_PASSWORD:-}" ]; then
+  echo "  [WARN] OPENCODE_SERVER_PASSWORD is not set."
+  echo "         The web interface will be unsecured. Add it to $LOCAL_ENV:"
+  echo "         OPENCODE_SERVER_PASSWORD=\"your-secret-password\""
+fi
+
+mkdir -p "$DOTFILES_DIR/.local" "$CONFIG_DIR"
+
+# Pattern 1: template → .local/ copy (writable) → symlink to target
+# Always refresh from template so config changes propagate on reinstall
+LOCAL_OPENCODE="$DOTFILES_DIR/.local/opencode.jsonc"
+cp "$DOTFILES_DIR/opencode/opencode.jsonc" "$LOCAL_OPENCODE"
 
 # Backup existing config if it's not a symlink
 if [ -f "$CONFIG_DIR/opencode.jsonc" ] && [ ! -L "$CONFIG_DIR/opencode.jsonc" ]; then
   mv "$CONFIG_DIR/opencode.jsonc" "$CONFIG_DIR/opencode.jsonc.backup"
 fi
 
-ln -sf "$DOTFILES_DIR/opencode/opencode.jsonc" "$CONFIG_DIR/opencode.jsonc"
-echo "  [ OK ] opencode config symlinked to $CONFIG_DIR/opencode.jsonc"
+ln -sf "$LOCAL_OPENCODE" "$CONFIG_DIR/opencode.jsonc"
+echo "  [ OK ] opencode config symlinked via .local/opencode.jsonc"
+
+# Install AI SDK package for LiteLLM provider support
+cd "$CONFIG_DIR"
+npm install @ai-sdk/openai-compatible 2>/dev/null || true
+echo "  [ OK ] AI SDK package installed"
+
+# ---- Launchd agent for opencode web (auto-start on login) ----
+LOCAL_BIN="$DOTFILES_DIR/.local/bin"
+mkdir -p "$LOCAL_BIN"
+
+WRAPPER_SRC="$DOTFILES_DIR/opencode/scripts/opencode-web.sh"
+WRAPPER_DST="$LOCAL_BIN/opencode-web.sh"
+ln -sf "$WRAPPER_SRC" "$WRAPPER_DST"
+echo "  [ OK ] opencode web wrapper linked to $WRAPPER_DST"
+
+mkdir -p "$HOME/Library/LaunchAgents"
+PLIST_PATH="$HOME/Library/LaunchAgents/ai.opencode.web.plist"
+cat > "$PLIST_PATH" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ai.opencode.web</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>$WRAPPER_DST</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/tmp/opencode-web.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/opencode-web.log</string>
+</dict>
+</plist>
+EOF
+
+launchctl load -w "$PLIST_PATH" 2>/dev/null || true
+echo "  [ OK ] launchd agent installed — opencode web starts automatically on login"
+
+# ---- Chat workspace ----
+CHAT_DIR="$HOME/Code/opencode-chat"
+mkdir -p "$CHAT_DIR"
+if [ ! -f "$CHAT_DIR/README.md" ]; then
+  cat > "$CHAT_DIR/README.md" << 'EOF'
+# opencode-chat
+
+Placeholder folder for opencode web chat sessions.
+Use this as the default workspace when you just want to chat without opening a specific project.
+EOF
+fi
+echo "  [ OK ] Chat workspace at $CHAT_DIR"
 

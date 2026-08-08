@@ -1,0 +1,14 @@
+opencode.localhost {
+    tls internal
+    reverse_proxy localhost:4096
+}
+
+litellm.localhost {
+    tls internal
+    reverse_proxy localhost:4000
+}
+
+phoenix.localhost {
+    tls internal
+    reverse_proxy localhost:6006
+}

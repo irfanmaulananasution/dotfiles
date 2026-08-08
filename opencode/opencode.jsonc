@@ -1,11 +1,126 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
-    "opencode-go": {
+    "opencode": {
+      "whitelist": [
+        "deepseek-v4-flash-free"
+      ]
+    },
+    "non-litellm-provider": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Deepseek (Direct)",
       "options": {
-        "apiKey": "{env:PERSONAL_OPENCODE_API_KEY}"
+        "baseURL": "https://api.deepseek.com",
+        "apiKey": "{env:PERSONAL_DEEPSEEK_API_KEY}"
+      },
+      "models": {
+        "deepseek-v4-flash": {
+          "name": "DeepSeek V4 Flash (Deepseek Direct)"
+        },
+        "deepseek-v4-pro": {
+          "name": "DeepSeek V4 Pro (Deepseek Direct)"
+        }
+      }
+    },
+    "opencodego": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "OpenCodeGO (LiteLLM)",
+      "options": {
+        "baseURL": "http://localhost:4000/v1",
+        "apiKey": "{env:LITELLM_KEY}",
+        "setCacheKey": true
+      },
+      "models": {
+        "grok-4.5-opencodego": {
+          "name": "Grok 4.5"
+        },
+        "gpt-5.6-luna-opencodego": {
+          "name": "GPT 5.6 Luna"
+        },
+        "glm-5.2-opencodego": {
+          "name": "GLM-5.2"
+        },
+        "glm-5.1-opencodego": {
+          "name": "GLM-5.1"
+        },
+        "kimi-k3-opencodego": {
+          "name": "Kimi K3"
+        },
+        "kimi-k2.7-code-opencodego": {
+          "name": "Kimi K2.7 Code"
+        },
+        "kimi-k2.6-opencodego": {
+          "name": "Kimi K2.6"
+        },
+        "mimo-v2.5-opencodego": {
+          "name": "MiMo V2.5"
+        },
+        "mimo-v2.5-pro-opencodego": {
+          "name": "MiMo V2.5 Pro"
+        },
+        "minimax-m3-opencodego": {
+          "name": "MiniMax M3"
+        },
+        "minimax-m2.7-opencodego": {
+          "name": "MiniMax M2.7"
+        },
+        "minimax-m2.5-opencodego": {
+          "name": "MiniMax M2.5"
+        },
+        "qwen3.8-max-opencodego": {
+          "name": "Qwen3.8 Max"
+        },
+        "qwen3.7-max-opencodego": {
+          "name": "Qwen3.7 Max"
+        },
+        "qwen3.7-plus-opencodego": {
+          "name": "Qwen3.7 Plus"
+        },
+        "qwen3.6-plus-opencodego": {
+          "name": "Qwen3.6 Plus"
+        },
+        "deepseek-v4-pro-opencodego": {
+          "name": "DeepSeek V4 Pro"
+        },
+        "deepseek-v4-flash-opencodego": {
+          "name": "DeepSeek V4 Flash"
+        },
+        "hy3-opencodego": {
+          "name": "Hy3"
+        }
+      }
+    },
+    "deepseek-official": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "DeepSeek Official (LiteLLM)",
+      "options": {
+        "baseURL": "http://localhost:4000/v1",
+        "apiKey": "{env:LITELLM_KEY}"
+      },
+      "models": {
+        "deepseek-v4-pro-deepseek": {
+          "name": "DeepSeek V4 Pro"
+        },
+        "deepseek-v4-flash-deepseek": {
+          "name": "DeepSeek V4 Flash"
+        }
       }
     }
   },
-  "model": "opencode-go/deepseek-v4-flash"
+  "disabled_providers": [
+    "deepseek"
+  ],
+  "server": {
+    "port": 4096,
+    "cors": [
+      "http://localhost:5173",
+      "http://localhost:3000"
+    ]
+  },
+  "mcp": {
+    "phoenix": {
+      "type": "remote",
+      "url": "http://localhost:6006/mcp"
+    }
+  }
 }
