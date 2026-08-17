@@ -20,10 +20,13 @@ cd ~/.dotfiles
 mkdir -p .local && cp .env.example .local/.env.local
 ```
 
-Then edit `.local/.env.local` and fill in your API key and git identity:
+Then edit `.local/.env.local` and fill in both API keys, your database password,
+and git identity:
 
 ```ini
 PERSONAL_OPENCODE_API_KEY="sk-your-key-here"
+PERSONAL_DEEPSEEK_API_KEY="sk-your-deepseek-key-here"
+PHOENIX_DB_PASSWORD="use-a-unique-password"
 GIT_AUTHOR_NAME="Your Name"
 GIT_AUTHOR_EMAIL="your@email.com"
 ```
@@ -34,14 +37,15 @@ GIT_AUTHOR_EMAIL="your@email.com"
 ./install.sh
 ```
 
-That's it. The script handles everything end-to-end:
+Start Docker Desktop or Rancher Desktop and wait for the Docker daemon before
+running the installer. The script handles the macOS setup end-to-end:
 - Xcode Command Line Tools, Homebrew, Oh My Zsh
 - Apps and CLI tools from Brewfile
 - Symlinks all config files
 - VS Code settings and extensions
-- SDKMAN, Java, Gradle
+- SDKMAN and Java 21; Gradle is intentionally not installed globally
 - opencode config
-- SSH key generation + GitHub CLI auth + upload
+- SSH key generation plus optional GitHub CLI auth/upload; interactive steps may be required
 - macOS defaults
 
 ## What install.sh does
@@ -54,7 +58,7 @@ That's it. The script handles everything end-to-end:
 | 4 | Symlinks `~/.zshrc` → dotfiles | Only updates if different |
 | 5 | Runs `brew bundle` (Brewfile) | Brew handles idempotency |
 | 6 | Symlinks all `.symlink` files via `bootstrap` | Skips if already linked |
-| 7 | Runs topic installers (VS Code, SDKMAN, opencode, git) | Checks before installing |
+| 7 | Runs all discovered topic installers | Individual prerequisites are validated |
 | 8 | Points iTerm2 preferences to dotfiles | Skips if already set |
 | 9 | Applies macOS defaults | Re-applies every run |
 
@@ -183,7 +187,12 @@ To skip a topic on a specific machine, rename the directory (e.g., `mv docker do
 
 ## Secrets & API Keys
 
-The dotfiles **never** store secrets in tracked files. Secrets live in `.local/.env.local` (gitignored). The opencode config uses `{env:PERSONAL_OPENCODE_API_KEY}` to read from the environment at runtime.
+The dotfiles **never** store secrets in tracked files. Secrets live in `.local/.env.local` (gitignored and restricted to mode `0600`). The opencode config uses `{env:PERSONAL_OPENCODE_API_KEY}` to read from the environment at runtime.
+
+The observability stack captures full prompt and response message content in
+Phoenix/Postgres. The optional accuracy evaluator sends sampled content to the
+configured DeepSeek judge API. Do not enable these services for sensitive data
+unless that external processing is acceptable.
 
 ### Setup
 
@@ -232,9 +241,10 @@ dot macos       # Re-apply macOS defaults (runs mac/install.sh)
 
 1. Clone this repo to `~/.dotfiles`
 2. Run `mkdir -p .local && cp .env.example .local/.env.local` and fill in your secrets
-3. Run `./install.sh`
-4. Sign in to Firefox Sync
-5. Done
+3. Start Docker Desktop or Rancher Desktop
+4. Run `./install.sh`
+5. Sign in to Firefox Sync
+6. Done
 
 ## Design Decisions
 

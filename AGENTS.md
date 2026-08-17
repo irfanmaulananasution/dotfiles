@@ -27,14 +27,14 @@ See `litellm/README.md` for the full guide (architecture, features/evaluation pi
 
 - **Models** are defined in `litellm/config.yaml` under `model_list`. **Naming convention: `model_name = <real_upstream_model_name>-<provider>`** (e.g. `deepseek-v4-pro-opencodego`, `deepseek-v4-pro-deepseek`). One entry per model. Each provider gets its own clearly-marked section (big comment banner) with its own `api_base` + `api_key`.
 - **Pricing** lives in two places and both must be updated when models change:
-  1. `litellm/otel_utils.py` — `MODEL_PRICING` dict (per-1M-token prices, shared source read by both `CostSpanProcessor` in litellm and the old enrich path). Price changes here only require `docker restart litellm` (no rebuild).
+  1. `litellm/otel_utils.py` — `MODEL_PRICING` dict (per-1M-token prices, used by `CostSpanProcessor`). Price changes here only require `docker restart litellm` (no rebuild).
   2. Phoenix `generative_models` + `token_prices` tables — seeded idempotently from `litellm/db/pricing.sql` (auto-run by `litellm/install.sh`). These drive Phoenix's `costSummary` in the dashboard. The `name_pattern` column must be a regex that matches the span's `llm.model_name` attribute. Update both `MODEL_PRICING` and `pricing.sql` when models change.
 - **Spans record the UPSTREAM model name** (e.g. `deepseek-v4-pro`), not the LiteLLM route name (`deepseek-v4-pro-deepseek`). So `MODEL_PRICING` keys and Phoenix `name_pattern`s are keyed on the **real model name** — they're shared across routes/providers of the same model.
 - **The enrich sidecar** (`docker compose` service `enrich`) runs a slim `enrich_spans.py --watch` every 30s: cursor-gated token promotion to trace roots + session grouping. Cost/token computation is now done at the request path by `CostSpanProcessor` (layer 3 in `monkey_patch.py`) — the enrich sidecar no longer computes costs or writes `cache_hit_rate`/`cost_efficiency`/`latency_s` annotations.
 - **Evaluators**: the `task_accuracy` LLM-as-judge evaluator is registered in Phoenix via `litellm/db/evaluators.sql` (idempotent; auto-seeded by `litellm/install.sh` after the stack is healthy). The judge model is the DeepSeek official API configured through a custom provider (`deepseek-official-eval`), created by `install.sh` via the Phoenix GraphQL API (its key is encrypted server-side, so it can't be seeded via SQL) — it does NOT route through litellm. `litellm/scripts/evaluate_accuracy.py` writes `task_accuracy` annotations directly to `span_annotations`. The Evaluators page lists registered evaluator configs; span annotations are visible on span detail.
 - When changing the upstream provider:
   - Update `api_base` + `api_key` in `config.yaml` for every model in that provider section.
-  - Update `docker-compose.yml` env vars (`OTEL_ENDPOINT`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `PERSONAL_OPENCODE_API_KEY`, `PERSONAL_DEEPSEEK_API_KEY`).
+  - Update provider API keys in `.env.example` and `docker-compose.yml`; leave OTEL endpoints unchanged unless Phoenix's network address changes.
   - Run `script/bootstrap` then `litellm/install.sh` to regenerate env files and rebuild containers.
 
 ## Due diligence — repo conventions to follow
@@ -76,7 +76,7 @@ When adding, removing, or changing LLM models or providers:
 2. Update `MODEL_PRICING` dict in `litellm/otel_utils.py`.
 3. Insert/update `generative_models` + `token_prices` rows in Postgres (Phoenix's DB) using direct SQL. The `name_pattern` must regex-match the span's `llm.model_name` (the **upstream** model name).
 4. Update `opencode/opencode.jsonc` if the model should be available in opencode (add to the matching provider group).
-5. Rebuild and restart: `docker compose --env-file .local/litellm.env.local up -d --build enrich` (or run `litellm/install.sh`).
+5. Rebuild and restart with `litellm/install.sh` (or rebuild the `litellm` service directly).
 
 ### Observability stack (new rules after WS refactor)
 

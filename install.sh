@@ -7,6 +7,14 @@ set -euo pipefail
 
 DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd -P)"
 
+if [ "$(uname -s)" != "Darwin" ]; then
+  echo "[FAIL] This installer supports macOS only."
+  exit 1
+fi
+
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "$tmp_dir"' EXIT
+
 echo "==> Setting up your Mac..."
 
 # ---------- Xcode Command Line Tools ----------
@@ -28,30 +36,31 @@ fi
 if ! command -v brew &>/dev/null; then
   echo "==> Installing Homebrew..."
   BREW_COMMIT="ca0130bd52235f2fcb2bf23cfdda004bc5d250c1"
-  curl -fsSL "https://raw.githubusercontent.com/Homebrew/install/${BREW_COMMIT}/install.sh" -o /tmp/homebrew-install.sh
-  if [ -f /tmp/homebrew-install.sh ]; then
-    /bin/bash /tmp/homebrew-install.sh
-    rm -f /tmp/homebrew-install.sh
-  else
-    echo "[FAIL] Failed to download Homebrew installer"
+  curl -fsSL "https://raw.githubusercontent.com/Homebrew/install/${BREW_COMMIT}/install.sh" -o "$tmp_dir/homebrew-install.sh"
+  /bin/bash "$tmp_dir/homebrew-install.sh"
+  brew_path="$(command -v brew || true)"
+  if [ -z "$brew_path" ]; then
+    for candidate in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+      if [ -x "$candidate" ]; then brew_path="$candidate"; break; fi
+    done
+  fi
+  if [ -z "$brew_path" ]; then
+    echo "[FAIL] Homebrew installation completed but brew was not found."
     exit 1
   fi
-  echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$HOME/.zprofile"
-  eval "$(/opt/homebrew/bin/brew shellenv)"
+  brew_prefix="$(dirname "$(dirname "$brew_path")")"
+  brew_shellenv_line="eval \"\$($brew_path shellenv)\""
+  grep -Fqx "$brew_shellenv_line" "$HOME/.zprofile" 2>/dev/null || \
+    printf '%s\n' "$brew_shellenv_line" >> "$HOME/.zprofile"
+  eval "$($brew_path shellenv)"
 fi
 
 # ---------- Oh My Zsh ----------
 if [ ! -d "$HOME/.oh-my-zsh" ]; then
   echo "==> Installing Oh My Zsh..."
   OMZ_COMMIT="b37dd49ca5bfe0d99b35607637152cb8cc8b29d7"
-  curl -fsSL "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/${OMZ_COMMIT}/tools/install.sh" -o /tmp/omz-install.sh
-  if [ -f /tmp/omz-install.sh ]; then
-    sh /tmp/omz-install.sh "" --unattended
-    rm -f /tmp/omz-install.sh
-  else
-    echo "[FAIL] Failed to download Oh My Zsh installer"
-    exit 1
-  fi
+  curl -fsSL "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/${OMZ_COMMIT}/tools/install.sh" -o "$tmp_dir/omz-install.sh"
+  sh "$tmp_dir/omz-install.sh" "" --unattended
 fi
 
 # (Bootstrap handles .zshrc symlink via .local/ pattern)
@@ -59,7 +68,7 @@ fi
 # ---------- Homebrew Bundle ----------
 echo "==> Installing Homebrew packages..."
 brew update
-brew bundle --file "$DOTFILES_DIR/Brewfile" || true
+brew bundle --file "$DOTFILES_DIR/Brewfile"
 
 # ---------- Symlink dotfiles ----------
 echo "==> Symlinking dotfiles..."
@@ -70,6 +79,7 @@ mkdir -p "$HOME/Code"
 
 # ---------- Validate .env.local ----------
 if [ -f "$HOME/.env" ]; then
+  chmod 600 "$DOTFILES_DIR/.local/.env.local"
   set -a
   source "$HOME/.env"
   set +a
@@ -93,7 +103,11 @@ fi
 while IFS= read -r -d '' installer; do
   topic=$(basename "$(dirname "$installer")")
   echo "==> Running $topic topic installer..."
-  bash "$installer" </dev/tty || echo "  [WARN] $topic topic installer failed (continuing)"
+  if [ -r /dev/tty ]; then
+    bash "$installer" </dev/tty
+  else
+    bash "$installer"
+  fi
 done < <(find -H "$DOTFILES_DIR" -mindepth 2 -maxdepth 3 -name 'install.sh' -not -path '*/script/*' -not -path '*/node_modules/*' -print0)
 
 # iTerm2 restore

@@ -8,14 +8,11 @@ set -euo pipefail
 DOTFILES_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
 
 # Detect homebrew prefix
-if [ -d "/opt/homebrew" ]; then
-  PREFIX="/opt/homebrew"
-elif [ -d "/usr/local" ]; then
-  PREFIX="/usr/local"
-else
-  echo "  [FAIL] Homebrew prefix not found"
+if ! command -v brew &>/dev/null; then
+  echo "  [FAIL] Homebrew is not installed"
   exit 1
 fi
+PREFIX="$(brew --prefix)"
 
 # Symlink Caddyfile into homebrew's config directory
 CADDY_SRC="$DOTFILES_DIR/caddy/Caddyfile"
@@ -32,14 +29,11 @@ for domain in opencode.lan litellm.lan phoenix.lan; do
   sudo sed -i '' "/127.0.0.1 $domain/d" /etc/hosts 2>/dev/null || true
 done
 
-# Kill any manually-running Caddy so brew services can take over cleanly
-sudo pkill -x caddy 2>/dev/null || true
-
-# Stop existing brew service then re-register
-sudo brew services stop caddy 2>/dev/null || true
-if ! sudo brew services start caddy 2>&1; then
+# Stop any existing service then re-register
+brew services stop caddy 2>/dev/null || true
+if ! brew services start caddy 2>&1; then
   echo "  [FAIL] Could not start Caddy via brew services."
-  echo "         Try manually: sudo brew services start caddy"
+  echo "         Try manually: brew services start caddy"
   exit 1
 fi
 echo "  [ OK ] Caddy registered — https://opencode.localhost → :4096, https://litellm.localhost → :4000, https://phoenix.localhost → :6006"

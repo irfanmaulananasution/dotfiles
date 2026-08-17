@@ -39,7 +39,8 @@ link_file () {
       local currentSrc
       currentSrc="$(readlink "$dst")" || true
       if [ "$currentSrc" == "$local_copy" ]; then
-        success "already linked $dst"
+        cp "$src" "$local_copy"
+        success "refreshed $local_copy"
         return
       fi
 
@@ -86,6 +87,9 @@ done < <(find -H "$DOTFILES_ROOT" -maxdepth 3 -name '*.symlink' -not -path '*.gi
 mkdir -p "$DOTFILES_ROOT/.local"
 local_zshrc="$DOTFILES_ROOT/.local/.zshrc"
 if [ ! -L "$HOME/.zshrc" ] || [ "$(readlink "$HOME/.zshrc")" != "$local_zshrc" ]; then
+  if [ -f "$HOME/.zshrc" ] && [ ! -L "$HOME/.zshrc" ]; then
+    mv "$HOME/.zshrc" "$HOME/.zshrc.backup"
+  fi
   cp "$DOTFILES_ROOT/.zshrc" "$local_zshrc"
   ln -sf "$local_zshrc" "$HOME/.zshrc"
   success "linked .zshrc"
@@ -96,9 +100,14 @@ local_env="$DOTFILES_ROOT/.local/.env.local"
 if [ ! -L "$HOME/.env" ] || [ "$(readlink "$HOME/.env")" != "$local_env" ]; then
   if [ -f "$DOTFILES_ROOT/.env.example" ] && [ ! -f "$local_env" ]; then
     cp "$DOTFILES_ROOT/.env.example" "$local_env"
+    chmod 600 "$local_env"
     info "created $local_env — edit it to set your secrets"
   fi
   if [ -f "$local_env" ]; then
+    chmod 600 "$local_env"
+    if [ -f "$HOME/.env" ] && [ ! -L "$HOME/.env" ]; then
+      mv "$HOME/.env" "$HOME/.env.backup"
+    fi
     ln -sf "$local_env" "$HOME/.env"
     success "linked .env"
   fi

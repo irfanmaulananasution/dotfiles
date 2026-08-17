@@ -196,7 +196,7 @@ unset FIREFOX_ID
 
 # ---------- Kill affected apps so the changes take effect ----------
 for app in "Dock" "Finder" "SystemUIServer" "ActivityMonitor"; do
-  killall "$app" &>/dev/null
+  killall "$app" &>/dev/null || true
 done
 
 echo "  [ OK ] macOS defaults applied"
