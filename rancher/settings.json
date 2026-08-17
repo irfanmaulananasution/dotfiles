@@ -1,5 +1,5 @@
 {
-  "version": 18,
+  "version": 19,
   "application": {
     "adminAccess": false,
     "debug": false,
@@ -17,9 +17,10 @@
     "updater": {
       "enabled": true
     },
-    "autoStart": false,
-    "startInBackground": false,
+    "autoStart": true,
+    "startInBackground": true,
     "hideNotificationIcon": false,
+    "locale": "en-us",
     "window": {
       "quitOnClose": false
     },
@@ -34,7 +35,7 @@
     "name": "moby"
   },
   "virtualMachine": {
-    "memoryInGB": 2,
+    "memoryInGB": 4,
     "numberCPUs": 2,
     "type": "vz",
     "useRosetta": false,
@@ -46,7 +47,7 @@
     "integrations": {}
   },
   "kubernetes": {
-    "version": "1.36.2",
+    "version": "1.36.3",
     "port": 6443,
     "enabled": false,
     "options": {

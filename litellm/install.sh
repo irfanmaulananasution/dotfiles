@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #
 # LiteLLM proxy + Phoenix observability — Dockerized
+# Requires the Docker engine (provided by Rancher Desktop). Runs in phase 2 of
+# ./install.sh, after the Rancher Desktop gate has brought Docker up.
+NEEDS_DOCKER=1
 set -euo pipefail
 
 DOTFILES_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
@@ -8,6 +11,12 @@ LOCAL_DIR="$DOTFILES_DIR/.local"
 LITELLM_ENV_SOURCE="$LOCAL_DIR/litellm.env.local"
 
 # ---------- Prerequisites ----------
+# Rancher Desktop ships `docker` in ~/.rd/bin; make it resolvable even when the
+# current shell's PATH doesn't include it (e.g. fresh install.sh subprocesses).
+if ! command -v docker &>/dev/null && [ -x "$HOME/.rd/bin/docker" ]; then
+  export PATH="$HOME/.rd/bin:$PATH"
+fi
+
 if ! command -v docker &>/dev/null; then
   echo "  [FAIL] Docker is not installed. Install Docker Desktop or Rancher Desktop first."
   exit 1

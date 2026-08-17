@@ -100,15 +100,39 @@ if [ -f "$HOME/.env" ]; then
 fi
 
 # ---------- Topic installers ----------
-while IFS= read -r -d '' installer; do
-  topic=$(basename "$(dirname "$installer")")
-  echo "==> Running $topic topic installer..."
-  if [ -r /dev/tty ]; then
-    bash "$installer" </dev/tty
-  else
-    bash "$installer"
-  fi
-done < <(find -H "$DOTFILES_DIR" -mindepth 2 -maxdepth 3 -name 'install.sh' -not -path '*/script/*' -not -path '*/node_modules/*' -print0)
+# Run in two phases: topics that DON'T need Docker first, then topics that
+# explicitly declare `NEEDS_DOCKER=1` (run only after rancher/install.sh has
+# brought the Docker engine up). Each installer is allowed to fail without
+# aborting the whole bootstrap.
+run_phase() {
+  local needs_docker="$1"
+  local installer topic has_docker
+  while IFS= read -r -d '' installer; do
+    if grep -q '^NEEDS_DOCKER=1' "$installer" 2>/dev/null; then
+      has_docker=1
+    else
+      has_docker=0
+    fi
+    [ "$has_docker" != "$needs_docker" ] && continue
+    topic=$(basename "$(dirname "$installer")")
+    echo "==> Running $topic topic installer..."
+    if [ -r /dev/tty ]; then
+      bash "$installer" </dev/tty || echo "  [WARN] $topic installer failed — continuing"
+    else
+      bash "$installer" || echo "  [WARN] $topic installer failed — continuing"
+    fi
+  done < <(find -H "$DOTFILES_DIR" -mindepth 2 -maxdepth 3 -name 'install.sh' -not -path '*/script/*' -not -path '*/node_modules/*' -not -path '*/rancher/*' -print0)
+}
+
+run_phase 0
+echo "==> Ensuring Docker engine (Rancher Desktop) is ready..."
+bash "$DOTFILES_DIR/rancher/install.sh"
+# The gate starts Rancher in a subprocess; expose its CLI dir so Docker-dependent
+# topic installers (phase 1) can find `docker` in their own fresh shells.
+if [ -d "$HOME/.rd/bin" ]; then
+  export PATH="$HOME/.rd/bin:$PATH"
+fi
+run_phase 1
 
 # iTerm2 restore
 if [ -f "$DOTFILES_DIR/iterm2/restore.sh" ]; then

@@ -25,10 +25,11 @@ if [ ! -f "$HOME/.sdkman/bin/sdkman-init.sh" ]; then
   curl -s "https://get.sdkman.io" | bash
 fi
 
-# SDKMAN's init references ZSH_VERSION (unset under bash); relax -u briefly.
+# SDKMAN's scripts reference unset vars/positional params under `set -u`
+# (init reads ZSH_VERSION; sdkman-install.sh:24 reads unbound $3). Relax -u
+# for the entire SDKMAN section.
 set +u
 . "$HOME/.sdkman/bin/sdkman-init.sh"
-set -u
 
 export SDKMAN_OFFLINE_MODE="${SDKMAN_OFFLINE_MODE:-false}"
 
@@ -38,6 +39,7 @@ if ! sdk list java 2>/dev/null | grep -q "$JAVA_VERSION"; then
   sdk install java "$JAVA_VERSION"
 fi
 sdk default java "$JAVA_VERSION" 2>/dev/null || true
+set -u
 
 # ---------- Gradle: intentionally not installed globally ----------
 # Per-project `./gradlew` is the standard since Gradle 4.x. A global gradle
