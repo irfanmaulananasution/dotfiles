@@ -31,7 +31,7 @@ spec:
     spec:
       containers:
         - name: phoenix
-          image: ghcr.io/irfan-macee/llm-stack/phoenix:latest
+          image: ghcr.io/irfan-macee/llm-stack/phoenix:2026-08-17
           ports:
             - containerPort: 6006
             - containerPort: 4317

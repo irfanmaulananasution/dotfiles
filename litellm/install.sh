@@ -38,6 +38,11 @@ if [ -z "${PERSONAL_DEEPSEEK_API_KEY:-}" ] || [ "$PERSONAL_DEEPSEEK_API_KEY" = "
   exit 1
 fi
 
+# PHOENIX_DB_PASSWORD defaults to 'phoenix' for the local Docker stack (Postgres
+# is loopback-only and never published). Set it explicitly in .local/.env.local
+# if you need a stronger password, or before running k8s/setup.sh.
+PHOENIX_DB_PASSWORD="${PHOENIX_DB_PASSWORD:-phoenix}"
+
 # ---------- LITELLM_KEY: generate once, persist in .local/.env.local ----------
 if [ -z "${LITELLM_KEY:-}" ]; then
   # 128 bits of randomness (openssl rand, present on macOS base system).
@@ -58,8 +63,10 @@ mkdir -p "$LOCAL_DIR"
   echo "LITELLM_KEY=$LITELLM_KEY"
   echo "PERSONAL_OPENCODE_API_KEY=$PERSONAL_OPENCODE_API_KEY"
   echo "PERSONAL_DEEPSEEK_API_KEY=$PERSONAL_DEEPSEEK_API_KEY"
+  echo "PHOENIX_DB_PASSWORD=$PHOENIX_DB_PASSWORD"
 } > "$LITELLM_ENV_SOURCE"
 chmod 600 "$LITELLM_ENV_SOURCE"
+chmod 600 "$LOCAL_DIR/.env.local"
 
 # Remove any stale secret file/symlink previously left in the litellm/ scope.
 rm -f "$DOTFILES_DIR/litellm/.env"
@@ -71,22 +78,6 @@ for PLIST in ai.phoenix ai.litellm; do
     launchctl unload "$HOME/Library/LaunchAgents/$PLIST.plist" 2>/dev/null || true
     rm -f "$HOME/Library/LaunchAgents/$PLIST.plist"
   fi
-done
-
-# ---------- Kill stale processes on our ports ----------
-# Skip Rancher/lima VM port-forward processes (their SSH tunnels hold these
-# ports); killing them takes down the whole Docker engine. Compose-managed
-# containers release their own ports on recreate.
-for PORT in 4000 4317 6006; do
-  for PID in $(lsof -ti :"$PORT" 2>/dev/null || true); do
-    CMD=$(ps -p "$PID" -o command= 2>/dev/null || true)
-    case "$CMD" in
-      *rancher-desktop*|*lima*|*ssh.sock*) continue ;;
-    esac
-    echo "  [ ..] Killing stale process on port $PORT (PID $PID)"
-    kill "$PID" 2>/dev/null || true
-    sleep 1
-  done
 done
 
 # ---------- Docker Compose ----------
@@ -132,7 +123,7 @@ done
 # ---------- Seed Phoenix (pricing + evaluators) ----------
 echo ""
 echo "  [ ..] Seeding Phoenix pricing (generative_models + token_prices)..."
-docker exec -i postgres psql -U phoenix -d phoenix < "$DOTFILES_DIR/litellm/db/pricing.sql" 2>&1 | grep -v "^$" || true
+docker exec -i postgres psql -v ON_ERROR_STOP=1 -U phoenix -d phoenix < "$DOTFILES_DIR/litellm/db/pricing.sql"
 echo "  [ OK] Pricing seeded."
 
 echo "  [ ..] Ensuring DeepSeek evaluator custom provider exists..."
@@ -141,9 +132,9 @@ if ! docker exec postgres psql -U phoenix -d phoenix -tAc \
   # The provider's API key is encrypted server-side, so it must be created via
   # Phoenix's GraphQL API (never via SQL, never in the repo).
   if [ -n "${PERSONAL_DEEPSEEK_API_KEY:-}" ]; then
-    python3 - "$PERSONAL_DEEPSEEK_API_KEY" <<'PYEOF'
-import json, sys, urllib.request
-key = sys.argv[1]
+    PERSONAL_DEEPSEEK_API_KEY="$PERSONAL_DEEPSEEK_API_KEY" python3 - <<'PYEOF'
+import json, os, sys, urllib.request
+key = os.environ["PERSONAL_DEEPSEEK_API_KEY"]
 body = json.dumps({
   "query": "mutation($i: CreateGenerativeModelCustomProviderMutationInput!){createGenerativeModelCustomProvider(input:$i){provider{id name}}}",
   "variables": {"i": {
@@ -172,7 +163,7 @@ else
 fi
 
 echo "  [ ..] Seeding Phoenix evaluators (task_accuracy LLM judge)..."
-docker exec -i postgres psql -U phoenix -d phoenix < "$DOTFILES_DIR/litellm/db/evaluators.sql" 2>&1 | grep -v "^$" || true
+docker exec -i postgres psql -v ON_ERROR_STOP=1 -U phoenix -d phoenix < "$DOTFILES_DIR/litellm/db/evaluators.sql"
 echo "  [ OK] Evaluators seeded."
 
 echo "  [ OK] LLM stack is running."

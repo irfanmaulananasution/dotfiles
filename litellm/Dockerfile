@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir "fastapi>=0.136.3,<0.140.7" && \
-    pip install --no-cache-dir litellm[proxy] && \
+    pip install --no-cache-dir "litellm[proxy]==1.97.0" && \
     pip install --no-cache-dir \
         openai \
         opentelemetry-api \

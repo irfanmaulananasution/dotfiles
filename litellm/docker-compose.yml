@@ -64,7 +64,8 @@ services:
       - "--config"
       - "/app/config.yaml"
     depends_on:
-      - phoenix
+      phoenix:
+        condition: service_healthy
     restart: unless-stopped
 
   enrich:
@@ -78,7 +79,8 @@ services:
     volumes:
       - ./scripts/enrich_spans.py:/app/enrich_spans.py
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   eval-accuracy:
@@ -94,7 +96,8 @@ services:
       - ./scripts/evaluate_accuracy.py:/app/evaluate_accuracy.py
       - ./otel_utils.py:/app/otel_utils.py:ro
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

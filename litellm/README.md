@@ -48,7 +48,8 @@ verify** it.
 **What it gives you:** the proxy records how many prompt tokens were served from
 DeepSeek's context cache (`prompt_cache_hit_tokens`) vs. freshly processed
 (`prompt_cache_miss_tokens`). Visible in the proxy response and on each Phoenix span
-as `llm.token_count.prompt_details.cache_read` / `cache_miss` / `cache_write`.
+as `llm.token_count.prompt_details.cache_read`, `llm.token_count.cache_miss`,
+and `llm.token_count.prompt_details.cache_write`.
 
 **Why it matters:** cached tokens are billed ~100× cheaper than misses. Tracking the
 hit rate tells you whether your prompts (system prompts, tool definitions, long
@@ -62,10 +63,9 @@ contexts) are stable enough to benefit from caching.
   `litellm/docker-entrypoint.sh`) so the fields survive: it adds them to
   `litellm.utils.Usage`, preserves `prompt_tokens_details.cached_tokens`, and carries
   them through both streaming usage-reconstruction paths.
-- `CostSpanProcessor` in `litellm/monkey_patch.py` (layer 3, runs on the request
-  path) and the enrich sidecar both read the cache fields and write
-  ``llm.token_count.prompt_details.cache_read`` (and ``cache_miss``) to span
-  attributes.
+- `CostSpanProcessor` in `litellm/monkey_patch.py` reads the cache fields and
+  writes the token and cost attributes on the request path. The enrich sidecar
+  only promotes those attributes to trace roots and assigns sessions.
 
 **Verify:**
 
@@ -81,8 +81,9 @@ curl -s http://localhost:4000/v1/chat/completions \
 
 ### 2. Cost
 
-**What it gives you:** every span carries `total_cost` / `prompt_cost` /
-`completion_cost` in its attributes, computed in real time on the request path by
+**What it gives you:** every span carries `llm.token_count.total_cost`,
+`llm.token_count.prompt_cost`, and `llm.token_count.completion_cost` (plus
+`gen_ai.cost.*` attributes), computed in real time on the request path by
 `CostSpanProcessor` (patch #7 in `monkey_patch.py`). The Phoenix dashboard
 `costSummary` reads from `token_prices` (seeded by `db/pricing.sql`).
 
@@ -95,7 +96,7 @@ curl -s http://localhost:4000/v1/chat/completions \
   tables (seeded from `litellm/db/pricing.sql`), which drive the dashboard's
   `costSummary`.
 - `CostSpanProcessor` computes cost with a **cache-aware** formula:
-  `cost = cache_hit_tokens × cache_price + cache_miss_tokens × input_price + completion_tokens × output_price`.
+  `cost = cache_hit_tokens × cache_price + cache_write_tokens × input_price + cache_miss_tokens × input_price + completion_tokens × output_price`.
 - **Price changes only need `docker restart litellm`** — `otel_utils.py` is volume-mounted
   and read at process start (no rebuild needed).
 
@@ -310,7 +311,9 @@ LiteLLM route name (`new-model-opencodego`).
 "new-model-opencodego": { "name": "New Model" }
 ```
 
-**Rebuild** — `litellm/install.sh` (or `docker compose --env-file .local/litellm.env.local up -d --build enrich` for just the enrich sidecar, or `docker restart litellm` for price-only changes).
+**Rebuild** — `litellm/install.sh` for model/provider/config changes (or rebuild
+`litellm` directly). Rebuild `enrich` only when its sidecar code changes. For
+request-path price changes, restart `litellm` and rerun the Phoenix pricing seed.
 
 ### Remove a model
 

@@ -7,26 +7,19 @@ set -euo pipefail
 DOTFILES_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
 CONFIG_DIR="$HOME/.config/opencode"
 
-# Locate env file (accept ~/.env or ~/.env.local)
-ENV_SRC=""
-if [ -f "$HOME/.env.local" ]; then
-  ENV_SRC="$HOME/.env.local"
-elif [ -f "$HOME/.env" ]; then
-  ENV_SRC="$HOME/.env"
-fi
+# The repository-local env file is the only supported source of secrets.
+ENV_SRC="$DOTFILES_DIR/.local/.env.local"
 
-if [ -z "$ENV_SRC" ]; then
-  echo "  [FAIL] Neither ~/.env nor ~/.env.local found."
+if [ ! -f "$ENV_SRC" ]; then
+  echo "  [FAIL] $ENV_SRC not found. Run script/bootstrap first."
   echo "         Create one with PERSONAL_OPENCODE_API_KEY from .env.example."
   exit 1
 fi
 
 # Ensure ~/.env is symlinked to .local/.env.local
 LOCAL_ENV="$DOTFILES_DIR/.local/.env.local"
-mkdir -p "$DOTFILES_DIR/.local"
-if [ ! -f "$LOCAL_ENV" ]; then
-  cp "$ENV_SRC" "$LOCAL_ENV"
-fi
+mkdir -p "$(dirname "$LOCAL_ENV")"
+chmod 600 "$LOCAL_ENV"
 if [ ! -L "$HOME/.env" ] || [ "$(readlink "$HOME/.env")" != "$LOCAL_ENV" ]; then
   ln -sf "$LOCAL_ENV" "$HOME/.env"
 fi
@@ -65,7 +58,10 @@ echo "  [ OK ] opencode config symlinked via .local/opencode.jsonc"
 
 # Install AI SDK package for LiteLLM provider support
 cd "$CONFIG_DIR"
-npm install @ai-sdk/openai-compatible 2>/dev/null || true
+if ! npm install @ai-sdk/openai-compatible 2>/dev/null; then
+  echo "  [FAIL] Could not install @ai-sdk/openai-compatible"
+  exit 1
+fi
 echo "  [ OK ] AI SDK package installed"
 
 # ---- Launchd agent for opencode web (auto-start on login) ----
@@ -102,7 +98,11 @@ cat > "$PLIST_PATH" <<EOF
 </plist>
 EOF
 
-launchctl load -w "$PLIST_PATH" 2>/dev/null || true
+launchctl bootout "gui/$(id -u)/ai.opencode.web" 2>/dev/null || true
+if ! launchctl bootstrap "gui/$(id -u)" "$PLIST_PATH"; then
+  echo "  [FAIL] Could not register the OpenCode launch agent"
+  exit 1
+fi
 echo "  [ OK ] launchd agent installed — opencode web starts automatically on login"
 
 # ---- Chat workspace ----
@@ -117,4 +117,3 @@ Use this as the default workspace when you just want to chat without opening a s
 EOF
 fi
 echo "  [ OK ] Chat workspace at $CHAT_DIR"
-

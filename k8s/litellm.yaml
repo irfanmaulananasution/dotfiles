@@ -26,7 +26,7 @@ spec:
     spec:
       containers:
         - name: litellm
-          image: ghcr.io/irfan-macee/llm-stack/litellm:latest
+          image: ghcr.io/irfan-macee/llm-stack/litellm:2026-08-17
           ports:
             - containerPort: 4000
           env:
