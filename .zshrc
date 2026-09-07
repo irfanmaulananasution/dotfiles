@@ -29,6 +29,11 @@ source $ZSH/oh-my-zsh.sh
 export LC_ALL=en_US.UTF-8
 export LANG=en_US.UTF-8
 
+# Hermes CLI: force dark mode. Terminal bg is black, but COLORFGBG=0;15 makes
+# Hermes misdetect "light" and remap text to near-black (#1A1A1A) — unreadable.
+# HERMES_LIGHT=0 short-circuits the detection ladder and keeps text bright.
+export HERMES_LIGHT=0
+
 # Load environment variables from ~/.env (git-ignored, for secrets)
 # Uses `source` so shell quoting and var expansion work correctly:
 #   KEY="value"       -> value (quotes stripped)

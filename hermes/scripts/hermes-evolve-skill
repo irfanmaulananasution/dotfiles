@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+#
+# hermes-evolve-skill - run hermes-agent-self-evolution's skill optimizer.
+#
+# Usage:
+#   hermes-evolve-skill --skill <name> --iterations N [--eval-source synthetic|sessiondb]
+#
+# See ~/.hermes/hermes-agent-self-evolution/README.md for full options.
+
+set -euo pipefail
+
+HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
+export HERMES_AGENT_REPO="${HERMES_AGENT_REPO:-$HERMES_HOME/hermes-agent}"
+SE_PY="$HERMES_HOME/venvs/self-evolution/bin/python"
+
+if [ ! -x "$SE_PY" ]; then
+  echo "self-evolution venv missing. Run ~/.dotfiles/hermes/install.sh first." >&2
+  exit 1
+fi
+
+if [ "$#" -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+  echo "usage: $0 --skill <skill-name> --iterations N [--eval-source synthetic|sessiondb]"
+  exit 0
+fi
+
+exec "$SE_PY" -m evolution.skills.evolve_skill "$@"
