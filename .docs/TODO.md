@@ -17,15 +17,16 @@
 - [ ] Install skills:
   - [ ] Graphify
   - [ ] Ponytail (modified)
-  - [ ] RTK
-  - [ ] Caveman
+  - [ ] RTK (rejected not useful)
+  - [ ] Caveman (rejected not useful)
   - [ ] I Have ADHD
   - [ ] AutoResearch
   - [ ] Superpowers 
-  - [ ] Agent-Reach
-  - [ ] Strix
-  - [ ] OpenMontage
-  - [ ] HyperFrames
+  - [ ] oh-my-pi
+  - [ ] Agent-Reach : ai crawler
+  - [ ] Strix : ai pentester
+  - [ ] OpenMontage : ai video editor
+  - [ ] HyperFrames : ai video editor
   - [ ] Khoj (for second brain — do we need it?)
   - [ ] Scientific Agent Skills
 - [x] Phoenix AI tracing and evaluation stack
