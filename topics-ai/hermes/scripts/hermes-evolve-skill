@@ -14,7 +14,7 @@ export HERMES_AGENT_REPO="${HERMES_AGENT_REPO:-$HERMES_HOME/hermes-agent}"
 SE_PY="$HERMES_HOME/venvs/self-evolution/bin/python"
 
 if [ ! -x "$SE_PY" ]; then
-  echo "self-evolution venv missing. Run ~/.dotfiles/hermes/install.sh first." >&2
+  echo "self-evolution venv missing. Run ~/.dotfiles/topics-ai/hermes/install.sh first." >&2
   exit 1
 fi
 

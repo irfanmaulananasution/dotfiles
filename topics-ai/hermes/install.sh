@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# hermes/install.sh - Install & configure NousResearch Hermes Agent
+# topics-ai/hermes/install.sh - Install & configure NousResearch Hermes Agent
 #
 # Everything the agent needs is wired here, idempotently:
 #   1. Hermes Agent core (official installer -> ~/.hermes)      [skip-setup]
@@ -12,13 +12,13 @@
 #   4. Plugins: NousResearch hermes-plugin-backsearch.
 #   5. Hub skill(s): official/devops/docker-management.
 #   6. Utility: NousResearch hermes-agent-self-evolution (clone + venv).
-#   7. Copies hermes/MANIFEST.md -> ~/.hermes/MANIFEST.md as a runtime record.
+#   7. Copies topics-ai/hermes/MANIFEST.md -> ~/.hermes/MANIFEST.md as a runtime record.
 #
 # Run manually, or automatically via ./install.sh (auto-discovered topic).
 
 set -euo pipefail
 
-DOTFILES_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
+DOTFILES_DIR="$(cd "$(dirname "$0")/../.." && pwd -P)"
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 
 # The repository-local env file is the only supported source of secrets.
@@ -183,16 +183,16 @@ fi
 # Launcher on PATH (~/.local/bin is on PATH via dotfiles)
 LOCAL_BIN="$DOTFILES_DIR/.local/bin"
 mkdir -p "$LOCAL_BIN"
-if [ -f "$DOTFILES_DIR/hermes/scripts/hermes-evolve-skill" ]; then
-  ln -sf "$DOTFILES_DIR/hermes/scripts/hermes-evolve-skill" "$LOCAL_BIN/hermes-evolve-skill"
+if [ -f "$DOTFILES_DIR/topics-ai/hermes/scripts/hermes-evolve-skill" ]; then
+  ln -sf "$DOTFILES_DIR/topics-ai/hermes/scripts/hermes-evolve-skill" "$LOCAL_BIN/hermes-evolve-skill"
   echo "  [ OK ] launcher: hermes-evolve-skill -> $LOCAL_BIN"
 fi
 
 # ---------------------------------------------------------------------------
 # 7. Manifest copy (runtime record)
 # ---------------------------------------------------------------------------
-if [ -f "$DOTFILES_DIR/hermes/MANIFEST.md" ]; then
-  cp "$DOTFILES_DIR/hermes/MANIFEST.md" "$HERMES_HOME/MANIFEST.md"
+if [ -f "$DOTFILES_DIR/topics-ai/hermes/MANIFEST.md" ]; then
+  cp "$DOTFILES_DIR/topics-ai/hermes/MANIFEST.md" "$HERMES_HOME/MANIFEST.md"
   echo "  [ OK ] manifest copied to $HERMES_HOME/MANIFEST.md"
 fi
 

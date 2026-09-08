@@ -59,11 +59,11 @@ contexts) are stable enough to benefit from caching.
 
 - DeepSeek's API returns cache fields on the `usage` object. LiteLLM's streaming
   aggregation and serialization historically dropped them.
-- `litellm/monkey_patch.py` patches LiteLLM (applied at container startup via
-  `litellm/docker-entrypoint.sh`) so the fields survive: it adds them to
+- `topics-ai/litellm/monkey_patch.py` patches LiteLLM (applied at container startup via
+  `topics-ai/litellm/docker-entrypoint.sh`) so the fields survive: it adds them to
   `litellm.utils.Usage`, preserves `prompt_tokens_details.cached_tokens`, and carries
   them through both streaming usage-reconstruction paths.
-- `CostSpanProcessor` in `litellm/monkey_patch.py` reads the cache fields and
+- `CostSpanProcessor` in `topics-ai/litellm/monkey_patch.py` reads the cache fields and
   writes the token and cost attributes on the request path. The enrich sidecar
   only promotes those attributes to trace roots and assigns sessions.
 
@@ -89,11 +89,11 @@ curl -s http://localhost:4000/v1/chat/completions \
 
 **How it works:**
 
-- Per-model prices live in `litellm/otel_utils.py` → `MODEL_PRICING`
+- Per-model prices live in `topics-ai/litellm/otel_utils.py` → `MODEL_PRICING`
   (per-1M-token: input, output, and optional cache-hit price). This is shared by
   both the `CostSpanProcessor` (litellm request path) and any callers that import it.
 - The same prices are mirrored into Phoenix's `generative_models` + `token_prices`
-  tables (seeded from `litellm/db/pricing.sql`), which drive the dashboard's
+  tables (seeded from `topics-ai/litellm/db/pricing.sql`), which drive the dashboard's
   `costSummary`.
 - `CostSpanProcessor` computes cost with a **cache-aware** formula:
   `cost = cache_hit_tokens × cache_price + cache_write_tokens × input_price + cache_miss_tokens × input_price + completion_tokens × output_price`.
@@ -130,7 +130,7 @@ stored as the `task_accuracy` annotation per span.
 
 **How it works:**
 
-- `litellm/scripts/evaluate_accuracy.py` (the `eval-accuracy` sidecar) samples ~5% of
+- `topics-ai/litellm/scripts/evaluate_accuracy.py` (the `eval-accuracy` sidecar) samples ~5% of
   unevaluated spans every 30 minutes.
 - For each sampled span it reconstructs the system prompt + user request + model
   response from the span attributes and sends them to the judge model.
@@ -151,8 +151,8 @@ UI, open any span to see its accuracy annotation.
 evaluator* on Phoenix's **Evaluators** page, so you can see the config even though the
 live annotations are written by the sidecar.
 
-**How it works:** `litellm/db/evaluators.sql` (idempotent, auto-run by
-`litellm/install.sh`) seeds:
+**How it works:** `topics-ai/litellm/db/evaluators.sql` (idempotent, auto-run by
+`topics-ai/litellm/install.sh`) seeds:
 
 - a DeepSeek custom provider (`deepseek-official-eval`) pointing at the official API,
 - the judge prompt template (system + user with `{{mustache}}` variables),
@@ -212,26 +212,26 @@ docker exec postgres psql -U phoenix -d phoenix \
 
 | Concern | File |
 |---|---|
-| Models / routes / api keys | `litellm/config.yaml` |
-| Per-model pricing | `litellm/otel_utils.py` (`MODEL_PRICING`) |
-| Phoenix cost tables | `litellm/db/pricing.sql` (seeds `generative_models` + `token_prices`) |
-| Cache-field preservation + cost processor | `litellm/monkey_patch.py` |
-| Span token promotion + sessions | `litellm/scripts/enrich_spans.py` |
-| Accuracy judge | `litellm/scripts/evaluate_accuracy.py` |
-| Evaluator registration | `litellm/db/evaluators.sql` (run by `litellm/install.sh`) |
-| opencode provider mapping | `opencode/opencode.jsonc` |
-| Stack orchestration | `litellm/docker-compose.yml` |
+| Models / routes / api keys | `topics-ai/litellm/config.yaml` |
+| Per-model pricing | `topics-ai/litellm/otel_utils.py` (`MODEL_PRICING`) |
+| Phoenix cost tables | `topics-ai/litellm/db/pricing.sql` (seeds `generative_models` + `token_prices`) |
+| Cache-field preservation + cost processor | `topics-ai/litellm/monkey_patch.py` |
+| Span token promotion + sessions | `topics-ai/litellm/scripts/enrich_spans.py` |
+| Accuracy judge | `topics-ai/litellm/scripts/evaluate_accuracy.py` |
+| Evaluator registration | `topics-ai/litellm/db/evaluators.sql` (run by `topics-ai/litellm/install.sh`) |
+| opencode provider mapping | `topics-ai/opencode/opencode.jsonc` |
+| Stack orchestration | `topics-ai/litellm/docker-compose.yml` |
 
 ## Proxy auth (`LITELLM_KEY`)
 
 The proxy's admin key is **auto-generated** on first install as
 `sk-litellm-local-dev-<32 hex chars>` (`openssl rand -hex 16`) and persisted in `.local/.env.local`
 (single source of truth). It is forwarded to the `litellm` container via
-`.local/litellm.env.local` (from `litellm/install.sh`) and to opencode via the
-`LITELLM_KEY` environment variable (`opencode/opencode.jsonc` reads it with
+`.local/litellm.env.local` (from `topics-ai/litellm/install.sh`) and to opencode via the
+`LITELLM_KEY` environment variable (`topics-ai/opencode/opencode.jsonc` reads it with
 `{env:LITELLM_KEY}`).
 
-To rotate it, set a new value in `.local/.env.local` and re-run `litellm/install.sh`
+To rotate it, set a new value in `.local/.env.local` and re-run `topics-ai/litellm/install.sh`
 (an empty or missing `LITELLM_KEY` regenerates a fresh one).
 
 ---
@@ -261,7 +261,7 @@ own clearly-marked section with a big comment banner. Change `api_base` and
 ### 2. Update `.env.example` and `docker-compose.yml`
 
 - Add the new API key env var to `.env.example` and `.local/.env.local`.
-- Update `litellm/docker-compose.yml`:
+- Update `topics-ai/litellm/docker-compose.yml`:
   - The `litellm` service env vars: `PERSONAL_OPENCODE_API_KEY` / `PERSONAL_DEEPSEEK_API_KEY` → new key name(s).
   - The `OTEL_ENDPOINT` and `OTEL_EXPORTER_OTLP_ENDPOINT` point to Phoenix (internal Docker network, don't change).
 
@@ -269,14 +269,14 @@ own clearly-marked section with a big comment banner. Change `api_base` and
 
 ```bash
 script/bootstrap
-litellm/install.sh
+topics-ai/litellm/install.sh
 ```
 
 ## How to add or remove a model
 
 ### Add a model
 
-**`litellm/config.yaml`** — Add ONE entry under the provider's section (see the
+**`topics-ai/litellm/config.yaml`** — Add ONE entry under the provider's section (see the
 comment banners for which section/`api_base`/`api_key` to use):
 
 ```yaml
@@ -287,13 +287,13 @@ comment banners for which section/`api_base`/`api_key` to use):
     api_key: "os.environ/PERSONAL_OPENCODE_API_KEY"
 ```
 
-**`litellm/otel_utils.py`** — Add pricing to `MODEL_PRICING` dict (prices per 1M tokens, keyed on the **real upstream model name**):
+**`topics-ai/litellm/otel_utils.py`** — Add pricing to `MODEL_PRICING` dict (prices per 1M tokens, keyed on the **real upstream model name**):
 
 ```python
 "new-model": (input_price, output_price),
 ```
 
-**Phoenix model registry** — Add the model + prices to `litellm/db/pricing.sql` (idempotent, auto-run by `install.sh`):
+**Phoenix model registry** — Add the model + prices to `topics-ai/litellm/db/pricing.sql` (idempotent, auto-run by `install.sh`):
 ```sql
 -- example: add under the custom-model blocks
 INSERT INTO generative_models (name, name_pattern, provider, is_built_in)
@@ -306,12 +306,12 @@ The `name_pattern` must regex-match the `llm.model_name` attribute on incoming
 spans — which is the **upstream** model name (e.g. `new-model`), NOT the
 LiteLLM route name (`new-model-opencodego`).
 
-**`opencode/opencode.jsonc`** — Add to the matching provider group (e.g. `opencodego`), using the LiteLLM route name as the model id. Don't name a group after a built-in provider (e.g. `deepseek`); opencode will merge the models.dev catalog into it. Use a unique id instead and add the built-in to `disabled_providers`.
+**`topics-ai/opencode/opencode.jsonc`** — Add to the matching provider group (e.g. `opencodego`), using the LiteLLM route name as the model id. Don't name a group after a built-in provider (e.g. `deepseek`); opencode will merge the models.dev catalog into it. Use a unique id instead and add the built-in to `disabled_providers`.
 ```json
 "new-model-opencodego": { "name": "New Model" }
 ```
 
-**Rebuild** — `litellm/install.sh` for model/provider/config changes (or rebuild
+**Rebuild** — `topics-ai/litellm/install.sh` for model/provider/config changes (or rebuild
 `litellm` directly). Rebuild `enrich` only when its sidecar code changes. For
 request-path price changes, restart `litellm` and rerun the Phoenix pricing seed.
 
@@ -324,14 +324,14 @@ Reverse the steps above. Soft-delete from Phoenix by setting `deleted_at` on the
 Official OpenCodeGO pricing: `https://opencode.ai/docs/zen/#pricing`
 
 Pricing must be kept in sync in TWO places:
-1. `litellm/otel_utils.py` — `MODEL_PRICING` dict (shared source used by `CostSpanProcessor` in litellm). Price changes here only need `docker restart litellm` (no rebuild).
-2. `litellm/db/pricing.sql` → Phoenix `generative_models` + `token_prices` tables (drives the dashboard `costSummary`).
+1. `topics-ai/litellm/otel_utils.py` — `MODEL_PRICING` dict (shared source used by `CostSpanProcessor` in litellm). Price changes here only need `docker restart litellm` (no rebuild).
+2. `topics-ai/litellm/db/pricing.sql` → Phoenix `generative_models` + `token_prices` tables (drives the dashboard `costSummary`).
 
 ## Rebuild / reinstall (idempotent)
 
 ```bash
 script/bootstrap          # copies .env.example → .local/.env.local, runs all installers
-litellm/install.sh        # builds images, starts stack, seeds pricing + evaluators
+topics-ai/litellm/install.sh        # builds images, starts stack, seeds pricing + evaluators
 ```
 
 Everything above is defined in this dotfiles repo — cloning it on a new machine and
@@ -342,10 +342,10 @@ running the install scripts reproduces the same stack and features (secrets come
 
 ```bash
 # Rebuild and redeploy everything
-litellm/install.sh
+topics-ai/litellm/install.sh
 
 # Rebuild only the enrich sidecar (after pricing changes)
-docker compose --env-file .local/litellm.env.local -f litellm/docker-compose.yml up -d --build enrich
+docker compose --env-file .local/litellm.env.local -f topics-ai/litellm/docker-compose.yml up -d --build enrich
 
 # Restart litellm for price/MODEL_PRICING changes (no rebuild needed)
 docker restart litellm
