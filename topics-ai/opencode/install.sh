@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-DOTFILES_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
+DOTFILES_DIR="$(cd "$(dirname "$0")/../.." && pwd -P)"
 CONFIG_DIR="$HOME/.config/opencode"
 
 # The repository-local env file is the only supported source of secrets.
@@ -46,7 +46,7 @@ mkdir -p "$DOTFILES_DIR/.local" "$CONFIG_DIR"
 # Pattern 1: template → .local/ copy (writable) → symlink to target
 # Always refresh from template so config changes propagate on reinstall
 LOCAL_OPENCODE="$DOTFILES_DIR/.local/opencode.jsonc"
-cp "$DOTFILES_DIR/opencode/opencode.jsonc" "$LOCAL_OPENCODE"
+cp "$DOTFILES_DIR/topics-ai/opencode/opencode.jsonc" "$LOCAL_OPENCODE"
 
 # Backup existing config if it's not a symlink
 if [ -f "$CONFIG_DIR/opencode.jsonc" ] && [ ! -L "$CONFIG_DIR/opencode.jsonc" ]; then
@@ -68,7 +68,7 @@ echo "  [ OK ] AI SDK package installed"
 LOCAL_BIN="$DOTFILES_DIR/.local/bin"
 mkdir -p "$LOCAL_BIN"
 
-WRAPPER_SRC="$DOTFILES_DIR/opencode/scripts/opencode-web.sh"
+WRAPPER_SRC="$DOTFILES_DIR/topics-ai/opencode/scripts/opencode-web.sh"
 WRAPPER_DST="$LOCAL_BIN/opencode-web.sh"
 ln -sf "$WRAPPER_SRC" "$WRAPPER_DST"
 echo "  [ OK ] opencode web wrapper linked to $WRAPPER_DST"
