@@ -67,6 +67,19 @@ Note: self-evolution is a **dev/research tool** (DSPy + GEPA skill/prompt
 optimizer), not a runtime Hermes plugin — it has no `plugin.yaml`. Runs cost
 ~$2–10 in API calls each and proposes PRs for human review.
 
+## Desktop app (Electron)
+
+| Item | Value |
+|---|---|
+| Install | Built in place via `hermes desktop --build-only` → `~/.hermes/hermes-agent/apps/desktop/release/<os>-<arch>/Hermes.app` (idempotent, content-hash stamped) |
+| Launch | `hermes desktop` (uses the built app; rebuilds only when the source changes) |
+| macOS TCC identity | `hermes desktop --setup-tcc-identity` anchors a self-signed code-signing cert (`desktop.macos_signing_identity`) so microphone / Full Disk Access / Accessibility / Files-and-Folders grants survive rebuilds |
+
+The desktop app is the same agent as the CLI — same config, keys, sessions,
+skills, and memory. The `/Applications/Hermes.app` bundle (if present) is the
+prebuilt website installer and is **not** managed by this topic; the canonical,
+self-updating build lives under `apps/desktop/release/`.
+
 ## Environment keys (`.env.example`)
 
 | Key | Required | Used by |
@@ -78,7 +91,7 @@ optimizer), not a runtime Hermes plugin — it has no `plugin.yaml`. Runs cost
 
 | File | Purpose |
 |---|---|
-| `topics-ai/hermes/install.sh` | Idempotent installer (core + model + MCP + plugins + skills + self-evolution) |
+| `topics-ai/hermes/install.sh` | Idempotent installer (core + model + MCP + plugins + skills + self-evolution + desktop app) |
 | `topics-ai/hermes/MANIFEST.md` | This record (copied to `~/.hermes/MANIFEST.md`) |
 | `topics-ai/hermes/scripts/hermes-evolve-skill` | PATH launcher for the self-evolution tool |
 
