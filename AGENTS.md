@@ -56,6 +56,10 @@ When making any change in this repo, follow these rules. If you discover a new c
 - `install.sh` scripts should source `.local/.env.local` for secrets rather than prompting the user.
 - Run `script/bootstrap` after making changes to `.symlink` files or `install.sh` files.
 
+### Git identity
+- `GIT_AUTHOR_EMAIL` in `.local/.env.local` **must** be the GitHub noreply address (`<id>+<login>@users.noreply.github.com`) or an email verified on the account. A non-linked email makes GitHub treat commits as a separate identity and append a `Co-authored-by:` trailer on squash merges (the "split account" symptom).
+- `.zshrc` does `set -a; source ~/.env` (symlink to `.local/.env.local`), which **exports** `GIT_AUTHOR_NAME`/`GIT_AUTHOR_EMAIL`. Git env vars override `~/.gitconfig`, so a stale `.local/.env.local` wins even after `git/install.sh` regenerates `~/.gitconfig` from it — restart the shell (or re-source `~/.env`) after fixing the value. `git/install.sh` warns when the email is not a noreply address.
+
 ### Topic ordering & the Docker gate
 - `./install.sh` runs topic installers in **two phases after Homebrew/Bootstrap**:
   1. Topics that do **not** need Docker.

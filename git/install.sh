@@ -26,8 +26,18 @@ if [ -n "$name" ] && [ -n "$email" ]; then
   {
     cat "$DOTFILES_DIR/git/gitconfig.symlink"
     printf "\n[user]\n\tname = %s\n\temail = %s\n" "$name" "$email"
-  } > "$LOCAL_DIR/gitconfig"
+  }   > "$LOCAL_DIR/gitconfig"
   echo "  [ OK ] Git user: $name <$email>"
+  # A non-noreply / non-verified email makes GitHub treat the commits as a
+  # separate identity and adds a "Co-authored-by:" trailer on squash merges.
+  case "$email" in
+    *@users.noreply.github.com) ;;
+    *)
+      echo "  [WARN] GIT_AUTHOR_EMAIL ($email) is not a GitHub noreply address."
+      echo "         Commits may be attributed to a separate identity (extra Co-authored-by on squash merges)."
+      echo "         Use <id>+<login>@users.noreply.github.com — see .env.example."
+      ;;
+  esac
 else
   echo "  [ .. ] Git user not set — .local/gitconfig will keep the template."
 fi
