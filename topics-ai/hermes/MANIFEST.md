@@ -24,12 +24,17 @@ flowing through the LiteLLM/Phoenix observability + cost pipeline.
 
 | Setting | Value |
 |---|---|
-| `model.default` | `deepseek-v4-pro-deepseek` (DeepSeek V4 Pro via your official DeepSeek key) |
+| `model.default` | `deepseek-v4-flash-deepseek` (DeepSeek V4 Flash — cheap/fast main interactive loop) |
 | `model.provider` | `custom` |
 | `model.base_url` | `http://localhost:4000/v1` |
 | `model.api_key` | `$LITELLM_KEY` (written into `~/.hermes/config.yaml`, file chmod 600) |
 | `agent.reasoning_effort` | `none` (DeepSeek via LiteLLM rejects the OpenAI `reasoning_effort` param with HTTP 400; DeepSeek still reasons natively) |
 | Auxiliary tasks | `deepseek-v4-flash-deepseek` (V4 Flash) for `compression`, `title_generation`, `web_extract`, `session_search` |
+| `delegation.model` | `deepseek-v4-pro-deepseek` (V4 Pro) — `delegate_task` subagents run on Pro: short-lived, focused, reasoning-heavy work is where the extra cost earns its keep. Provider is left unset so children inherit the custom LiteLLM endpoint + key |
+
+To escalate a single hard turn without changing the default, use `--once`
+inside a session: `/model deepseek-v4-pro-deepseek --once` (restores Flash
+after that turn). To run a whole session on Pro: `/model deepseek-v4-pro-deepseek`.
 
 Auxiliary tasks (vision, browser screenshots) stay on the main model — DeepSeek
 is text-only, so no multimodal fallback is configured.
