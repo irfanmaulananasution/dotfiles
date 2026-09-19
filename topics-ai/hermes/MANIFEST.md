@@ -52,18 +52,45 @@ is text-only, so no multimodal fallback is configured.
 | `backsearch` | [NousResearch/hermes-plugin-backsearch](https://github.com/NousResearch/hermes-plugin-backsearch) | enabled |
 | `backsearch` tools | `backsearch`, `backfetch` | **inert until `OPENREWARD_API_KEY` is set** — add it to `.local/.env.local` (prepaid key from https://openreward.ai), then re-run `topics-ai/hermes/install.sh` to copy it into `~/.hermes/.env` |
 
-## Hub skills
+## Skills (cross-tool registry)
 
-| Skill | Identifier | Notes |
-|---|---|---|
-| docker-management | `official/devops/docker-management` | Docker/Compose management — matches the `topics-ai/litellm/` Compose stack |
-| adhd-assistant | `adhd-assistant` (clawhub `@tobeyrebecca/adhder-assistant`) | ADHD-friendly life management — task breakdown, time blindness, body doubling, routines. MIT, community source, installed at the user's explicit request (security scan: SAFE) |
-| i-have-adhd | `i-have-adhd` (GitHub `ayghri/i-have-adhd`, raw SKILL.md URL) | ADHD-friendly output style — lead with the next action, number multi-step work, restate state, no preamble. MIT, community source, installed at the user's explicit request (security scan: SAFE) |
+`topics-ai/skills/manifest` is the **source of truth** for every agent skill this
+machine uses — tool-agnostic, consumed by `topics-ai/skills/install.sh` and by
+section 5 of this topic's `install.sh`. Columns: `<name> <source> <tools> <identifier>`.
+
+Per source:
+
+- **`builtin`** — ships with Hermes (recorded in `~/.hermes/skills/.bundled_manifest`,
+  restored by `hermes update`). **Verified present, never installed.**
+- **`official` / `clawhub` / `url`** — installed idempotently via `hermes skills install`.
+- **`local`** — authored in this repo under `topics-ai/skills/library/`, shared with
+  **every** tool through the `~/.agents/skills` symlink (see `topics-ai/skills/`).
+
+Add a row whenever you install or author a skill, so a fresh bootstrap reproduces it.
+
+| Skill | Source | Tools | Identifier | Notes |
+|---|---|---|---|---|
+| reddit-reading | builtin | hermes | — | Reddit: subreddits, search, threads, users. No browser. |
+| xurl | builtin | hermes | — | X/Twitter via `xurl` CLI: search, post, DM, media. |
+| youtube-content | builtin | hermes | — | YouTube transcripts → summaries, threads, blogs. |
+| blocked-page-recovery | builtin | hermes | — | Recover failed fetches: 403/429, paywall, WAF, bot wall. |
+| grounded-citations | builtin | hermes | — | Ground answers/documents in cited, verifiable sources. |
+| docker-management | official | hermes | `official/devops/docker-management` | Docker/Compose management — matches the `topics-ai/litellm/` Compose stack. |
+| adhder-assistant (`adhd-assistant`) | clawhub | hermes | `@tobeyrebecca/adhder-assistant` | ADHD-friendly life management. MIT, security scan SAFE; installed at the user's explicit request. Directory name ≠ frontmatter `name`, so **OpenCode would reject it** → Hermes-only. |
+| i-have-adhd | url | hermes | raw `SKILL.md` from `ayghri/i-have-adhd` | ADHD-friendly output style (lead with next action). MIT; explicit user request. |
+
+> The `builtin` rows are a **dependency declaration**, not an install step —
+> they ship with Hermes. The source is also visible live via `hermes skills list`
+> (column `source`) and dumpable via `hermes skills snapshot export -`.
 
 Other candidates (`openai/skills/k8s`, etc.) were not available on the reachable
 registries at setup time and were deliberately **not** installed from
-untrusted/community sources — the `adhd-assistant` and `i-have-adhd` skills are
+untrusted/community sources — `adhder-assistant` and `i-have-adhd` are
 the two explicit, user-requested exceptions.
+
+**Policy — upstream skills are not vendored.** Hub/upstream skill content is never
+copied into this repo; it stays Hermes-installed. Only `local` skills are shared
+cross-tool. This keeps third-party content (and its update burden) out of the repo.
 
 ## Additional utility tools
 
@@ -100,6 +127,7 @@ self-updating build lives under `apps/desktop/release/`.
 | File | Purpose |
 |---|---|
 | `topics-ai/hermes/install.sh` | Idempotent installer (core + model + MCP + plugins + skills + self-evolution + desktop app) |
+| `topics-ai/skills/manifest` | **Cross-tool** skill registry — source of truth, consumed by section 5 of this installer (lives in the `skills` topic, shared with OpenCode) |
 | `topics-ai/hermes/MANIFEST.md` | This record (copied to `~/.hermes/MANIFEST.md`) |
 | `topics-ai/hermes/scripts/hermes-evolve-skill` | PATH launcher for the self-evolution tool |
 

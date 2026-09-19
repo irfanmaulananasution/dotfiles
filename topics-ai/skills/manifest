@@ -1,0 +1,44 @@
+# AI skill registry — one source of truth for every agent skill this machine uses.
+#
+# Consumed by:
+#   topics-ai/skills/install.sh    cross-tool library + ~/.agents/skills wiring
+#   topics-ai/hermes/install.sh    Hermes-side verify/install (rows with tool 'hermes')
+#
+# Columns (whitespace-separated; `#` starts a trailing note):
+#
+#   <name>  <source>  <tools>  <identifier>   [# note]
+#
+#   name        skill name. For `local` skills this MUST equal the directory name
+#               under library/ — OpenCode and the Agent Skills spec both reject a
+#               skill whose frontmatter `name` != its directory name.
+#   source      builtin | official | clawhub | url | local
+#                 builtin   ships with Hermes (recorded in ~/.hermes/skills/.bundled_manifest,
+#                           restored by `hermes update`) — verified, never installed
+#                 local     authored in this repo -> topics-ai/skills/library/<name>/
+#                 official  installed by Hermes: `hermes skills install official/<category>/<name>`
+#                 clawhub   installed by Hermes: `hermes skills install @<owner>/<name>`
+#                 url       installed by Hermes: `hermes skills install <raw SKILL.md url>`
+#   tools       comma-separated tools that should see the skill: hermes, opencode
+#   identifier  install target; `-` when not installable (builtin, local)
+#
+# Policy (decided): upstream/hub skills are NOT vendored into this repo — they stay
+# Hermes-only. Only `local` skills are shared cross-tool, via library/ + ~/.agents/skills.
+# So a row is `tools=opencode` or `tools=hermes,opencode` only if source=local.
+#
+# Refresh the upstream identifiers with:
+#   hermes skills snapshot export -      # -> [{name, source, identifier, category}]
+
+# --- builtin: ship with Hermes (verified present, never installed) ---
+reddit-reading          builtin  hermes   -   # Reddit: subreddits, search, threads, users — no browser needed.
+xurl                    builtin  hermes   -   # X/Twitter via xurl CLI: search, post, DM, media.
+youtube-content         builtin  hermes   -   # YouTube transcripts -> summaries, threads, blogs.
+blocked-page-recovery   builtin  hermes   -   # Recover failed fetches: 403/429, paywall, WAF, bot wall.
+grounded-citations      builtin  hermes   -   # Ground answers/documents in cited, verifiable sources.
+
+# --- installed from a registry (Hermes-side) ---
+docker-management       official hermes   official/devops/docker-management  # Docker/Compose management — matches the litellm stack.
+adhder-assistant        clawhub  hermes   @tobeyrebecca/adhder-assistant      # ADHD life management (MIT, scan SAFE). Directory is `adhder-assistant` but frontmatter name is `adhd-assistant` — OpenCode would REJECT this, so it stays Hermes-only.
+i-have-adhd             url      hermes   https://raw.githubusercontent.com/ayghri/i-have-adhd/main/skills/i-have-adhd/SKILL.md  # ADHD-friendly output style (MIT).
+
+# --- local: authored here, shared with every tool via ~/.agents/skills ---
+# (none yet — add `local <name> hermes,opencode -` plus library/<name>/SKILL.md)

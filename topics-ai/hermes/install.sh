@@ -10,7 +10,8 @@
 #   3. Phoenix MCP server (same endpoint opencode uses) so Hermes can
 #      query its own observability data.
 #   4. Plugins: NousResearch hermes-plugin-backsearch.
-#   5. Hub skills: official/devops/docker-management + adhd-assistant + i-have-adhd (community).
+#   5. Skills: tracked registry in topics-ai/hermes/skills.manifest
+#      (builtin skills verified; official/clawhub/url skills installed).
 #   6. Utility: NousResearch hermes-agent-self-evolution (clone + venv).
 #   7. Desktop app (Electron): built via `hermes desktop --build-only` so
 #      `hermes desktop` launches without a first-run build; on macOS a
@@ -160,32 +161,81 @@ upsert_env() {
 upsert_env "OPENREWARD_API_KEY" "${OPENREWARD_API_KEY:-}"
 
 # ---------------------------------------------------------------------------
-# 5. Hub skills (curated: official + one explicitly-requested community skill)
+# 5. Skills — cross-tool registry (topics-ai/skills/manifest)
+#    Rows whose <tools> includes 'hermes':
+#      builtin                -> VERIFIED present (ship with Hermes; never installed)
+#      official/clawhub/url   -> installed idempotently via `hermes skills install`
+#      local                  -> authored in this repo; delivered via the shared
+#                                library (~/.agents/skills), wired by
+#                                topics-ai/skills/install.sh — only verified here.
 # ---------------------------------------------------------------------------
-echo "==> Installing hub skills..."
+echo "==> Tracking skills (topics-ai/skills/manifest)..."
+SKILLS_MANIFEST="$DOTFILES_DIR/topics-ai/skills/manifest"
+
+# A skill is present iff its directory exists under $HERMES_HOME/skills/ or in the
+# shared cross-tool library ($HOME/.agents/skills).
+# (`hermes skills list` truncates long names in its table, and a skill's
+#  frontmatter name can differ from its directory name — so match the filesystem.)
+skill_present() {
+  [ -n "$(find "$HERMES_HOME/skills" "$HOME/.agents/skills" -maxdepth 3 -type d -name "$1" -print -quit 2>/dev/null)" ]
+}
+
 install_skill() {
-  local ident="$1"
-  if "$HERMES_BIN" skills list 2>/dev/null | grep -q "$ident"; then
-    echo "  [ OK ] skill: $ident (already installed)"
-  elif "$HERMES_BIN" skills install "$ident" --yes >/dev/null 2>&1; then
-    echo "  [ OK ] skill: $ident"
+  local name="$1" target="$2"
+  if skill_present "$name"; then
+    echo "  [ OK ] skill: $name (already installed)"
+  elif "$HERMES_BIN" skills install "$target" --yes >/dev/null 2>&1; then
+    echo "  [ OK ] skill: $name"
   else
-    echo "  [WARN] skill install failed: $ident"
+    echo "  [WARN] skill install failed: $name — install manually:"
+    echo "         $HERMES_BIN skills install '$target' --yes"
   fi
 }
-install_skill "official/devops/docker-management"
-# Community skill (clawhub @tobeyrebecca/adhder-assistant, MIT, security-scan
-# verdict SAFE) — installed at the user's explicit request for ADHD support.
-install_skill "adhd-assistant"
-# Community skill (GitHub ayghri/i-have-adhd, MIT) — ADHD-friendly output style
-# (lead with next action, number steps, no preamble). Installed from the raw
-# SKILL.md URL at the user's explicit request. Idempotent via name check.
-if "$HERMES_BIN" skills list 2>/dev/null | grep -qi "i-have-adhd"; then
-  echo "  [ OK ] skill: i-have-adhd (already installed)"
-elif "$HERMES_BIN" skills install "https://raw.githubusercontent.com/ayghri/i-have-adhd/main/skills/i-have-adhd/SKILL.md" --yes >/dev/null 2>&1; then
-  echo "  [ OK ] skill: i-have-adhd"
+
+if [ -f "$SKILLS_MANIFEST" ]; then
+  while read -r name source tools identifier _note; do
+    case "${name:-}" in
+      ''|\#*) continue ;;            # blank line or comment
+    esac
+    # Column 3 lists the tools that want this skill; skip anything not ours.
+    case ",${tools:-}," in
+      *,hermes,*) ;;
+      *) continue ;;
+    esac
+    case "${source:-}" in
+      builtin)
+        if skill_present "$name"; then
+          echo "  [ OK ] builtin: $name"
+        else
+          echo "  [WARN] builtin skill missing: $name — run: hermes update"
+        fi
+        ;;
+      official|clawhub|url)
+        if [ -z "${identifier:-}" ] || [ "$identifier" = "-" ]; then
+          echo "  [WARN] skills/manifest: '$name' has no install target"
+        else
+          install_skill "$name" "$identifier"
+        fi
+        ;;
+      local)
+        # Authored here; delivered by the ~/.agents/skills symlink (topics-ai/skills),
+        # not by `hermes skills install`. Verified only — and only when that symlink
+        # exists, since topic run order isn't guaranteed to put `skills` first.
+        if [ ! -d "$HOME/.agents/skills" ]; then
+          echo "  [skip] local: $name — shared library not wired yet"
+        elif skill_present "$name"; then
+          echo "  [ OK ] local: $name (shared library)"
+        else
+          echo "  [WARN] local skill invisible to Hermes: $name — run: bash topics-ai/skills/install.sh"
+        fi
+        ;;
+      *)
+        echo "  [WARN] skills/manifest: unknown source '$source' ($name)"
+        ;;
+    esac
+  done < "$SKILLS_MANIFEST"
 else
-  echo "  [WARN] skill install failed: i-have-adhd"
+  echo "  [WARN] $SKILLS_MANIFEST not found — run topics-ai/skills/install.sh first"
 fi
 
 # ---------------------------------------------------------------------------
