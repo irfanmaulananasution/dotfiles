@@ -1,8 +1,8 @@
 -- Seed Phoenix generative_models + token_prices for the CUSTOM models in
--- litellm/config.yaml. Idempotent — safe to run repeatedly.
+-- topics-ai/litellm/config.yaml. Idempotent — safe to run repeatedly.
 --
--- Runs as part of litellm/install.sh after the stack is healthy.
--- Must be kept in sync with `MODEL_PRICING` in litellm/otel_utils.py.
+-- Runs as part of topics-ai/litellm/install.sh after the stack is healthy.
+-- Must be kept in sync with `MODEL_PRICING` in topics-ai/litellm/otel_utils.py.
 --
 -- The `name_pattern` regex-matches the span's `llm.model_name` attribute, which
 -- is the UPSTREAM model name (e.g. `deepseek-v4-pro`), not the LiteLLM route name.

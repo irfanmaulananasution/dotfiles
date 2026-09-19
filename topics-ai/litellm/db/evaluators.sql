@@ -1,6 +1,6 @@
 -- Register task_accuracy LLM evaluator in Phoenix DB.
 -- Does NOT touch litellm. Idempotent — safe to run repeatedly.
--- Runs as part of litellm/install.sh after the stack is healthy.
+-- Runs as part of topics-ai/litellm/install.sh after the stack is healthy.
 -- Requires the DeepSeek custom provider `deepseek-official-eval` to already
 -- exist (created by install.sh via the Phoenix GraphQL API — the provider's
 -- API key is encrypted server-side, so it cannot be inserted via SQL).

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# hermes/install.sh - Install & configure NousResearch Hermes Agent
+# topics-ai/hermes/install.sh - Install & configure NousResearch Hermes Agent
 #
 # Everything the agent needs is wired here, idempotently:
 #   1. Hermes Agent core (official installer -> ~/.hermes)      [skip-setup]
@@ -12,13 +12,17 @@
 #   4. Plugins: NousResearch hermes-plugin-backsearch.
 #   5. Hub skill(s): official/devops/docker-management.
 #   6. Utility: NousResearch hermes-agent-self-evolution (clone + venv).
-#   7. Copies hermes/MANIFEST.md -> ~/.hermes/MANIFEST.md as a runtime record.
+#   7. Desktop app (Electron): built via `hermes desktop --build-only` so
+#      `hermes desktop` launches without a first-run build; on macOS a
+#      self-signed code-signing identity is anchored so TCC grants survive
+#      rebuilds.
+#   8. Copies topics-ai/hermes/MANIFEST.md -> ~/.hermes/MANIFEST.md as a runtime record.
 #
 # Run manually, or automatically via ./install.sh (auto-discovered topic).
 
 set -euo pipefail
 
-DOTFILES_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
+DOTFILES_DIR="$(cd "$(dirname "$0")/../.." && pwd -P)"
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 
 # The repository-local env file is the only supported source of secrets.
@@ -183,16 +187,42 @@ fi
 # Launcher on PATH (~/.local/bin is on PATH via dotfiles)
 LOCAL_BIN="$DOTFILES_DIR/.local/bin"
 mkdir -p "$LOCAL_BIN"
-if [ -f "$DOTFILES_DIR/hermes/scripts/hermes-evolve-skill" ]; then
-  ln -sf "$DOTFILES_DIR/hermes/scripts/hermes-evolve-skill" "$LOCAL_BIN/hermes-evolve-skill"
+if [ -f "$DOTFILES_DIR/topics-ai/hermes/scripts/hermes-evolve-skill" ]; then
+  ln -sf "$DOTFILES_DIR/topics-ai/hermes/scripts/hermes-evolve-skill" "$LOCAL_BIN/hermes-evolve-skill"
   echo "  [ OK ] launcher: hermes-evolve-skill -> $LOCAL_BIN"
 fi
 
 # ---------------------------------------------------------------------------
-# 7. Manifest copy (runtime record)
+# 7. Desktop app (Electron) build
 # ---------------------------------------------------------------------------
-if [ -f "$DOTFILES_DIR/hermes/MANIFEST.md" ]; then
-  cp "$DOTFILES_DIR/hermes/MANIFEST.md" "$HERMES_HOME/MANIFEST.md"
+# Build the native desktop app in place (apps/desktop/release/<os>-<arch>/…)
+# so `hermes desktop` launches without a first-run npm install + Electron
+# package step. Idempotent (content-hash stamp). Best-effort: a failed build
+# must not abort the topic — the CLI still works and `hermes desktop` will
+# simply build on first launch.
+echo "==> Building Hermes Desktop (Electron) app..."
+if "$HERMES_BIN" desktop --build-only >/dev/null 2>&1; then
+  echo "  [ OK ] desktop app built (run \`hermes desktop\` to launch)"
+else
+  echo "  [WARN] desktop build failed — run \`hermes desktop\` manually to build on first launch"
+fi
+
+# macOS: anchor a self-signed code-signing identity so TCC grants (microphone,
+# Full Disk Access, Accessibility, Files and Folders) survive app rebuilds.
+# Idempotent; harmless to skip. (The CLI itself is a no-op off macOS.)
+if [ "$(uname -s)" = "Darwin" ]; then
+  if "$HERMES_BIN" desktop --setup-tcc-identity >/dev/null 2>&1; then
+    echo "  [ OK ] desktop TCC signing identity"
+  else
+    echo "  [WARN] could not set up desktop TCC signing identity (see \`hermes desktop --setup-tcc-identity\`)"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 8. Manifest copy (runtime record)
+# ---------------------------------------------------------------------------
+if [ -f "$DOTFILES_DIR/topics-ai/hermes/MANIFEST.md" ]; then
+  cp "$DOTFILES_DIR/topics-ai/hermes/MANIFEST.md" "$HERMES_HOME/MANIFEST.md"
   echo "  [ OK ] manifest copied to $HERMES_HOME/MANIFEST.md"
 fi
 

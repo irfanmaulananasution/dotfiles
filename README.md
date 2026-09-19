@@ -90,28 +90,34 @@ running the installer. The script handles the macOS setup end-to-end:
 │   └── dot                      # Utility: dot bootstrap|install|update|macos
 ├── script/
 │   └── bootstrap                # Copy templates to .local/, symlink to $HOME
-├── opencode/
-│   ├── opencode.jsonc           # Providers point to LiteLLM; keys via {env:…}
-│   ├── scripts/
-│   │   └── opencode-web.sh      # Headless `opencode serve` wrapper (launchd)
-│   └── install.sh               # Symlink config + web auto-start
-├── litellm/
-│   ├── config.yaml              # Model routes (per-provider sections)
-│   ├── docker-compose.yml       # postgres + phoenix + litellm + enrich + eval-accuracy
-│   ├── Dockerfile               # LiteLLM proxy image (also used by sidecars)
-│   ├── Dockerfile.phoenix       # Arize Phoenix image
-│   ├── docker-entrypoint.sh     # Applies OTEL_ENDPOINT and monkey patch at startup
-│   ├── monkey_patch.py          # DeepSeek cache fields + CostSpanProcessor
-│   ├── otel_utils.py            # Shared pricing/parse helpers (MODEL_PRICING)
-│   ├── db/
-│   │   ├── init.sql             # Create litellm DB on first postgres startup
-│   │   ├── pricing.sql          # Phoenix generative_models + token_prices seeds
-│   │   └── evaluators.sql       # Phoenix task_accuracy evaluator seeds
-│   ├── scripts/
-│   │   ├── enrich_spans.py      # Sidecar: token promotion + sessions
-│   │   └── evaluate_accuracy.py  # Sidecar: LLM-as-judge accuracy annotations
-│   ├── install.sh               # Generate env in .local/, bring up the stack, seed Phoenix
-│   └── README.md                # Full architecture/operations guide for the stack
+├── topics-ai/
+│   ├── hermes/
+│   │   ├── install.sh           # Idempotent Hermes Agent installer (core + model + MCP + plugins + skills)
+│   │   ├── MANIFEST.md          # Runtime record of everything installed
+│   │   └── scripts/
+│   │       └── hermes-evolve-skill  # PATH launcher for the self-evolution tool
+│   ├── opencode/
+│   │   ├── opencode.jsonc       # Providers point to LiteLLM; keys via {env:…}
+│   │   ├── scripts/
+│   │   │   └── opencode-web.sh  # Headless `opencode serve` wrapper (launchd)
+│   │   └── install.sh           # Symlink config + web auto-start
+│   └── litellm/
+│       ├── config.yaml          # Model routes (per-provider sections)
+│       ├── docker-compose.yml   # postgres + phoenix + litellm + enrich + eval-accuracy
+│       ├── Dockerfile           # LiteLLM proxy image (also used by sidecars)
+│       ├── Dockerfile.phoenix   # Arize Phoenix image
+│       ├── docker-entrypoint.sh # Applies OTEL_ENDPOINT and monkey patch at startup
+│       ├── monkey_patch.py      # DeepSeek cache fields + CostSpanProcessor
+│       ├── otel_utils.py        # Shared pricing/parse helpers (MODEL_PRICING)
+│       ├── db/
+│       │   ├── init.sql         # Create litellm DB on first postgres startup
+│       │   ├── pricing.sql      # Phoenix generative_models + token_prices seeds
+│       │   └── evaluators.sql   # Phoenix task_accuracy evaluator seeds
+│       ├── scripts/
+│       │   ├── enrich_spans.py  # Sidecar: token promotion + sessions
+│       │   └── evaluate_accuracy.py  # Sidecar: LLM-as-judge accuracy annotations
+│       ├── install.sh           # Generate env in .local/, bring up the stack, seed Phoenix
+│       └── README.md            # Full architecture/operations guide for the stack
 ├── k8s/
 │   ├── namespace.yaml           # llm-stack namespace
 │   ├── postgres.yaml            # Postgres StatefulSet + Service
@@ -267,7 +273,7 @@ alternatives were rejected*.
   pre-commit hook (`.pre-commit-config.yaml`) as a staging-boundary guard.
 
 ### opencode config reads keys via `{env:…}`, not inline strings
-- **Decision:** `opencode/opencode.jsonc:6` uses
+- **Decision:** `topics-ai/opencode/opencode.jsonc:6` uses
   `"apiKey": "{env:PERSONAL_OPENCODE_API_KEY}"` so the secret is resolved
   from the environment at runtime and never written to the tracked config.
 - **Rejected:** pasting the key into `opencode.jsonc` (would be committed).
