@@ -52,10 +52,13 @@ is text-only, so no multimodal fallback is configured.
 | Skill | Identifier | Notes |
 |---|---|---|
 | docker-management | `official/devops/docker-management` | Docker/Compose management — matches the `topics-ai/litellm/` Compose stack |
+| adhd-assistant | `adhd-assistant` (clawhub `@tobeyrebecca/adhder-assistant`) | ADHD-friendly life management — task breakdown, time blindness, body doubling, routines. MIT, community source, installed at the user's explicit request (security scan: SAFE) |
+| i-have-adhd | `i-have-adhd` (GitHub `ayghri/i-have-adhd`, raw SKILL.md URL) | ADHD-friendly output style — lead with the next action, number multi-step work, restate state, no preamble. MIT, community source, installed at the user's explicit request (security scan: SAFE) |
 
 Other candidates (`openai/skills/k8s`, etc.) were not available on the reachable
 registries at setup time and were deliberately **not** installed from
-untrusted/community sources.
+untrusted/community sources — the `adhd-assistant` and `i-have-adhd` skills are
+the two explicit, user-requested exceptions.
 
 ## Additional utility tools
 

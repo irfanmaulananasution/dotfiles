@@ -10,7 +10,7 @@
 #   3. Phoenix MCP server (same endpoint opencode uses) so Hermes can
 #      query its own observability data.
 #   4. Plugins: NousResearch hermes-plugin-backsearch.
-#   5. Hub skill(s): official/devops/docker-management.
+#   5. Hub skills: official/devops/docker-management + adhd-assistant + i-have-adhd (community).
 #   6. Utility: NousResearch hermes-agent-self-evolution (clone + venv).
 #   7. Desktop app (Electron): built via `hermes desktop --build-only` so
 #      `hermes desktop` launches without a first-run build; on macOS a
@@ -151,7 +151,7 @@ upsert_env() {
 upsert_env "OPENREWARD_API_KEY" "${OPENREWARD_API_KEY:-}"
 
 # ---------------------------------------------------------------------------
-# 5. Hub skills (curated, official)
+# 5. Hub skills (curated: official + one explicitly-requested community skill)
 # ---------------------------------------------------------------------------
 echo "==> Installing hub skills..."
 install_skill() {
@@ -165,6 +165,19 @@ install_skill() {
   fi
 }
 install_skill "official/devops/docker-management"
+# Community skill (clawhub @tobeyrebecca/adhder-assistant, MIT, security-scan
+# verdict SAFE) — installed at the user's explicit request for ADHD support.
+install_skill "adhd-assistant"
+# Community skill (GitHub ayghri/i-have-adhd, MIT) — ADHD-friendly output style
+# (lead with next action, number steps, no preamble). Installed from the raw
+# SKILL.md URL at the user's explicit request. Idempotent via name check.
+if "$HERMES_BIN" skills list 2>/dev/null | grep -qi "i-have-adhd"; then
+  echo "  [ OK ] skill: i-have-adhd (already installed)"
+elif "$HERMES_BIN" skills install "https://raw.githubusercontent.com/ayghri/i-have-adhd/main/skills/i-have-adhd/SKILL.md" --yes >/dev/null 2>&1; then
+  echo "  [ OK ] skill: i-have-adhd"
+else
+  echo "  [WARN] skill install failed: i-have-adhd"
+fi
 
 # ---------------------------------------------------------------------------
 # 6. hermes-agent-self-evolution utility (research/dev tool, NOT a runtime
