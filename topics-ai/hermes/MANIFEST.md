@@ -24,12 +24,17 @@ flowing through the LiteLLM/Phoenix observability + cost pipeline.
 
 | Setting | Value |
 |---|---|
-| `model.default` | `deepseek-v4-pro-deepseek` (DeepSeek V4 Pro via your official DeepSeek key) |
+| `model.default` | `deepseek-v4-flash-deepseek` (DeepSeek V4 Flash — cheap/fast main interactive loop) |
 | `model.provider` | `custom` |
 | `model.base_url` | `http://localhost:4000/v1` |
 | `model.api_key` | `$LITELLM_KEY` (written into `~/.hermes/config.yaml`, file chmod 600) |
 | `agent.reasoning_effort` | `none` (DeepSeek via LiteLLM rejects the OpenAI `reasoning_effort` param with HTTP 400; DeepSeek still reasons natively) |
 | Auxiliary tasks | `deepseek-v4-flash-deepseek` (V4 Flash) for `compression`, `title_generation`, `web_extract`, `session_search` |
+| `delegation.model` | `deepseek-v4-pro-deepseek` (V4 Pro) — `delegate_task` subagents run on Pro: short-lived, focused, reasoning-heavy work is where the extra cost earns its keep. Provider is left unset so children inherit the custom LiteLLM endpoint + key |
+
+To escalate a single hard turn without changing the default, use `--once`
+inside a session: `/model deepseek-v4-pro-deepseek --once` (restores Flash
+after that turn). To run a whole session on Pro: `/model deepseek-v4-pro-deepseek`.
 
 Auxiliary tasks (vision, browser screenshots) stay on the main model — DeepSeek
 is text-only, so no multimodal fallback is configured.
@@ -52,10 +57,13 @@ is text-only, so no multimodal fallback is configured.
 | Skill | Identifier | Notes |
 |---|---|---|
 | docker-management | `official/devops/docker-management` | Docker/Compose management — matches the `topics-ai/litellm/` Compose stack |
+| adhd-assistant | `adhd-assistant` (clawhub `@tobeyrebecca/adhder-assistant`) | ADHD-friendly life management — task breakdown, time blindness, body doubling, routines. MIT, community source, installed at the user's explicit request (security scan: SAFE) |
+| i-have-adhd | `i-have-adhd` (GitHub `ayghri/i-have-adhd`, raw SKILL.md URL) | ADHD-friendly output style — lead with the next action, number multi-step work, restate state, no preamble. MIT, community source, installed at the user's explicit request (security scan: SAFE) |
 
 Other candidates (`openai/skills/k8s`, etc.) were not available on the reachable
 registries at setup time and were deliberately **not** installed from
-untrusted/community sources.
+untrusted/community sources — the `adhd-assistant` and `i-have-adhd` skills are
+the two explicit, user-requested exceptions.
 
 ## Additional utility tools
 

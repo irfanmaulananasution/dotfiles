@@ -5,12 +5,12 @@
 # Everything the agent needs is wired here, idempotently:
 #   1. Hermes Agent core (official installer -> ~/.hermes)      [skip-setup]
 #   2. Model routing -> local LiteLLM proxy (localhost:4000/v1) with the
-#      LITELLM_KEY master key; DeepSeek V4 Pro default, V4 Flash for
-#      text-only auxiliary tasks.
+#      LITELLM_KEY master key; DeepSeek V4 Flash default + aux tasks, V4 Pro
+#      reserved for delegated subagents (short-lived, focused reasoning).
 #   3. Phoenix MCP server (same endpoint opencode uses) so Hermes can
 #      query its own observability data.
 #   4. Plugins: NousResearch hermes-plugin-backsearch.
-#   5. Hub skill(s): official/devops/docker-management.
+#   5. Hub skills: official/devops/docker-management + adhd-assistant + i-have-adhd (community).
 #   6. Utility: NousResearch hermes-agent-self-evolution (clone + venv).
 #   7. Desktop app (Electron): built via `hermes desktop --build-only` so
 #      `hermes desktop` launches without a first-run build; on macOS a
@@ -78,11 +78,16 @@ run() { # hermes config helper (silent unless it fails)
 }
 
 # ---------------------------------------------------------------------------
-# 2. Model routing -> LiteLLM (custom endpoint), Pro default + Flash aux
+# 2. Model routing -> LiteLLM (custom endpoint)
+#    Default = V4 Flash: cheap/fast for the main interactive loop.
+#    V4 Pro is reserved for where a focused reasoning agent is genuinely worth
+#    it — delegated subagents (delegate_task), which are short-lived. Auxiliary
+#    side-jobs stay on Flash.
 # ---------------------------------------------------------------------------
 LITELLM_BASE_URL="${LITELLM_BASE_URL:-http://localhost:4000/v1}"
-MAIN_MODEL="deepseek-v4-pro-deepseek"
+MAIN_MODEL="deepseek-v4-flash-deepseek"
 AUX_MODEL="deepseek-v4-flash-deepseek"
+DELEGATION_MODEL="deepseek-v4-pro-deepseek"
 echo "==> Wiring model to LiteLLM proxy ($LITELLM_BASE_URL)..."
 
 run model.default "$MAIN_MODEL"
@@ -97,12 +102,16 @@ for task in compression title_generation web_extract session_search; do
   run "auxiliary.$task.provider" "main"
   run "auxiliary.$task.model" "$AUX_MODEL"
 done
+# Delegated subagents -> Pro. A delegate_task child is a short-lived, focused
+# agent, which is exactly where the extra reasoning earns its cost. Provider is
+# left unset so children inherit the custom LiteLLM endpoint + key above.
+run delegation.model "$DELEGATION_MODEL"
 # DeepSeek via LiteLLM rejects the OpenAI "reasoning_effort" param (HTTP 400:
 # "openai does not support parameters: ['reasoning_effort']"), so agent-side
 # reasoning effort is disabled. This only turns off the explicit effort knob;
 # DeepSeek still reasons natively.
 run agent.reasoning_effort "none"
-echo "  [ OK ] model.default=$MAIN_MODEL, auxiliary=$AUX_MODEL, reasoning_effort=none"
+echo "  [ OK ] model.default=$MAIN_MODEL, auxiliary=$AUX_MODEL, delegation=$DELEGATION_MODEL, reasoning_effort=none"
 
 # The LiteLLM master key now lives in the machine-local config file; harden it.
 chmod 600 "$HERMES_HOME/config.yaml" 2>/dev/null || true
@@ -151,7 +160,7 @@ upsert_env() {
 upsert_env "OPENREWARD_API_KEY" "${OPENREWARD_API_KEY:-}"
 
 # ---------------------------------------------------------------------------
-# 5. Hub skills (curated, official)
+# 5. Hub skills (curated: official + one explicitly-requested community skill)
 # ---------------------------------------------------------------------------
 echo "==> Installing hub skills..."
 install_skill() {
@@ -165,6 +174,19 @@ install_skill() {
   fi
 }
 install_skill "official/devops/docker-management"
+# Community skill (clawhub @tobeyrebecca/adhder-assistant, MIT, security-scan
+# verdict SAFE) — installed at the user's explicit request for ADHD support.
+install_skill "adhd-assistant"
+# Community skill (GitHub ayghri/i-have-adhd, MIT) — ADHD-friendly output style
+# (lead with next action, number steps, no preamble). Installed from the raw
+# SKILL.md URL at the user's explicit request. Idempotent via name check.
+if "$HERMES_BIN" skills list 2>/dev/null | grep -qi "i-have-adhd"; then
+  echo "  [ OK ] skill: i-have-adhd (already installed)"
+elif "$HERMES_BIN" skills install "https://raw.githubusercontent.com/ayghri/i-have-adhd/main/skills/i-have-adhd/SKILL.md" --yes >/dev/null 2>&1; then
+  echo "  [ OK ] skill: i-have-adhd"
+else
+  echo "  [WARN] skill install failed: i-have-adhd"
+fi
 
 # ---------------------------------------------------------------------------
 # 6. hermes-agent-self-evolution utility (research/dev tool, NOT a runtime
